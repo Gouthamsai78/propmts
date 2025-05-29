@@ -1,7 +1,7 @@
 
 import { Home, Search, Compass, Plus } from "lucide-react";
 
-type Tab = 'home' | 'communities' | 'search' | 'explore' | 'create';
+type Tab = 'home' | 'communities' | 'search' | 'explore' | 'create' | 'profile';
 
 interface BottomNavProps {
   activeTab: Tab;
