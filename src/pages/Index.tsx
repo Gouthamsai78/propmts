@@ -14,6 +14,10 @@ type ActiveTab = 'home' | 'communities' | 'search' | 'explore' | 'create' | 'pro
 const Index = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
 
+  const handleProfileClick = () => {
+    setActiveTab('profile');
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
@@ -35,7 +39,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      <Header />
+      <Header onProfileClick={handleProfileClick} />
       <main className="pb-20 pt-16">
         {renderContent()}
       </main>

@@ -13,13 +13,17 @@ export const usePosts = () => {
           *,
           users (
             username,
-            avatar_url
+            avatar_url,
+            display_name
           )
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching posts:', error);
+        throw error;
+      }
+      return data || [];
     },
   });
 };
@@ -58,6 +62,97 @@ export const useCreatePost = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
+};
+
+export const useLikePost = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      if (!user) throw new Error('User must be logged in');
+      
+      // Check if user already liked the post
+      const { data: existingLike } = await supabase
+        .from('reactions')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .eq('reaction_type', 'like')
+        .single();
+
+      if (existingLike) {
+        // Unlike the post
+        const { error } = await supabase
+          .from('reactions')
+          .delete()
+          .eq('id', existingLike.id);
+        
+        if (error) throw error;
+        return { action: 'unliked' };
+      } else {
+        // Like the post
+        const { data, error } = await supabase
+          .from('reactions')
+          .insert({
+            post_id: postId,
+            user_id: user.id,
+            reaction_type: 'like'
+          });
+        
+        if (error) throw error;
+        return { action: 'liked' };
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
+};
+
+export const useSavePost = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      if (!user) throw new Error('User must be logged in');
+      
+      // Check if post is already saved
+      const { data: existingSave } = await supabase
+        .from('saved_posts')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingSave) {
+        // Unsave the post
+        const { error } = await supabase
+          .from('saved_posts')
+          .delete()
+          .eq('id', existingSave.id);
+        
+        if (error) throw error;
+        return { action: 'unsaved' };
+      } else {
+        // Save the post
+        const { data, error } = await supabase
+          .from('saved_posts')
+          .insert({
+            post_id: postId,
+            user_id: user.id
+          });
+        
+        if (error) throw error;
+        return { action: 'saved' };
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
     },
   });
 };

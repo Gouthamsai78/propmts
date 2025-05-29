@@ -1,12 +1,13 @@
 
-import { useState } from "react";
 import { PromptCard } from "./PromptCard";
 import { useToast } from "@/hooks/use-toast";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts, useLikePost, useSavePost } from "@/hooks/usePosts";
 
 export const Feed = () => {
   const { data: posts, isLoading, error } = usePosts();
   const { toast } = useToast();
+  const likePostMutation = useLikePost();
+  const savePostMutation = useSavePost();
 
   const handleCopyPrompt = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
@@ -16,18 +17,36 @@ export const Feed = () => {
     });
   };
 
-  const handleLike = (postId: string) => {
-    toast({
-      title: "Liked!",
-      description: "Post added to your likes.",
-    });
+  const handleLike = async (postId: string) => {
+    try {
+      const result = await likePostMutation.mutateAsync(postId);
+      toast({
+        title: result.action === 'liked' ? "Liked!" : "Unliked!",
+        description: result.action === 'liked' ? "Post added to your likes." : "Post removed from your likes.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to like post. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSave = (postId: string) => {
-    toast({
-      title: "Saved!",
-      description: "Post saved to your collection.",
-    });
+  const handleSave = async (postId: string) => {
+    try {
+      const result = await savePostMutation.mutateAsync(postId);
+      toast({
+        title: result.action === 'saved' ? "Saved!" : "Unsaved!",
+        description: result.action === 'saved' ? "Post saved to your collection." : "Post removed from your collection.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to save post. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -59,10 +78,17 @@ export const Feed = () => {
   }
 
   if (error) {
+    console.error('Feed error:', error);
     return (
       <div className="max-w-md mx-auto px-4 text-center py-8">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Something went wrong</h2>
         <p className="text-gray-600">Unable to load posts. Please try again later.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -92,7 +118,7 @@ export const Feed = () => {
             description: post.content || '',
             prompt: post.prompt || '',
             tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
-            author: (post.users as any)?.username || 'Anonymous',
+            author: (post.users as any)?.display_name || (post.users as any)?.username || 'Anonymous',
             authorAvatar: (post.users as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(post.users as any)?.username || 'anonymous'}`,
             likes: post.likes_count || 0,
             comments: post.comments_count || 0,
