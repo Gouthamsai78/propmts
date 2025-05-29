@@ -1,11 +1,12 @@
-
 import { useState } from "react";
 import { Settings, Grid, Bookmark, Crown } from "lucide-react";
 import { useUserProfile, useUserPosts, useSavedPosts } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { EditProfile } from "./EditProfile";
 
 export const Profile = () => {
   const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
+  const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
   const { data: userProfile } = useUserProfile();
   const { data: userPosts } = useUserPosts();
@@ -20,12 +21,19 @@ export const Profile = () => {
     );
   }
 
+  if (isEditing) {
+    return <EditProfile onBack={() => setIsEditing(false)} />;
+  }
+
   return (
     <div className="max-w-md mx-auto px-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between py-4">
         <h2 className="text-2xl font-bold text-gray-800">Profile</h2>
-        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+        <button 
+          onClick={() => setIsEditing(true)}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+        >
           <Settings className="w-6 h-6 text-gray-600" />
         </button>
       </div>
@@ -67,7 +75,10 @@ export const Profile = () => {
 
         {/* Action Buttons */}
         <div className="flex space-x-3 mt-4">
-          <button className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-xl font-semibold">
+          <button 
+            onClick={() => setIsEditing(true)}
+            className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-xl font-semibold"
+          >
             Edit Profile
           </button>
           <button className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors">

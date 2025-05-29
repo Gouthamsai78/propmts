@@ -1,10 +1,13 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const usePosts = () => {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ['posts'],
+    queryKey: ['posts', user?.id],
     queryFn: async () => {
       // First, fetch all posts
       const { data: posts, error: postsError } = await supabase
@@ -38,10 +41,42 @@ export const usePosts = () => {
       // Create a map of users by ID for quick lookup
       const usersMap = new Map(users?.map(user => [user.id, user]) || []);
 
-      // Combine posts with user data
+      // If user is logged in, fetch their reactions and saved posts
+      let userReactions: any[] = [];
+      let userSavedPosts: any[] = [];
+      
+      if (user) {
+        const postIds = posts.map(post => post.id);
+        
+        // Fetch user's reactions
+        const { data: reactions } = await supabase
+          .from('reactions')
+          .select('post_id, reaction_type')
+          .eq('user_id', user.id)
+          .in('post_id', postIds);
+        
+        userReactions = reactions || [];
+        
+        // Fetch user's saved posts
+        const { data: savedPosts } = await supabase
+          .from('saved_posts')
+          .select('post_id')
+          .eq('user_id', user.id)
+          .in('post_id', postIds);
+          
+        userSavedPosts = savedPosts || [];
+      }
+
+      // Create maps for quick lookup
+      const likesMap = new Map(userReactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
+      const savedMap = new Map(userSavedPosts.map(s => [s.post_id, true]));
+
+      // Combine posts with user data and interaction states
       const postsWithUsers = posts.map(post => ({
         ...post,
-        users: usersMap.get(post.user_id) || null
+        users: usersMap.get(post.user_id) || null,
+        isLikedByUser: likesMap.has(post.id),
+        isSavedByUser: savedMap.has(post.id)
       }));
 
       return postsWithUsers;

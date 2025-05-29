@@ -1,8 +1,6 @@
 
 import { useState } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal } from "lucide-react";
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +17,8 @@ interface Post {
   image?: string;
   allowCopy: boolean;
   timestamp: string;
+  isLiked?: boolean;
+  isSaved?: boolean;
 }
 
 interface PromptCardProps {
@@ -29,53 +29,12 @@ interface PromptCardProps {
 }
 
 export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardProps) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isLiked, setIsLiked] = useState(post.isLiked || false);
+  const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
+  const [likesCount, setLikesCount] = useState(post.likes);
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const savePostMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('User must be logged in');
-      
-      if (isSaved) {
-        // Remove from saved
-        const { error } = await supabase
-          .from('saved_posts')
-          .delete()
-          .eq('post_id', post.id)
-          .eq('user_id', user.id);
-        
-        if (error) throw error;
-      } else {
-        // Add to saved
-        const { error } = await supabase
-          .from('saved_posts')
-          .insert({
-            post_id: post.id,
-            user_id: user.id
-          });
-        
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
-      toast({
-        title: isSaved ? "Removed from saved" : "Saved!",
-        description: isSaved ? "Post removed from your collection." : "Post saved to your collection.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    }
-  });
 
   const handleLike = () => {
     if (!user) {
@@ -86,7 +45,10 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
       });
       return;
     }
+    
+    // Optimistic update
     setIsLiked(!isLiked);
+    setLikesCount(prevCount => isLiked ? prevCount - 1 : prevCount + 1);
     onLike();
   };
 
@@ -99,8 +61,9 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
       });
       return;
     }
+    
+    // Optimistic update
     setIsSaved(!isSaved);
-    savePostMutation.mutate();
     onSave();
   };
 
@@ -203,7 +166,7 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
               className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
             >
               <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-              <span className="text-sm font-medium text-gray-700">{post.likes}</span>
+              <span className="text-sm font-medium text-gray-700">{likesCount}</span>
             </button>
             <button className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors">
               <MessageCircle className="w-5 h-5 text-gray-600" />
@@ -212,8 +175,7 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
           </div>
           <button
             onClick={handleSave}
-            disabled={savePostMutation.isPending}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-purple-500 text-purple-500' : 'text-gray-600'}`} />
           </button>

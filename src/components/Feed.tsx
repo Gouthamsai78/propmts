@@ -1,4 +1,3 @@
-
 import { PromptCard } from "./PromptCard";
 import { useToast } from "@/hooks/use-toast";
 import { usePosts, useLikePost, useSavePost } from "@/hooks/usePosts";
@@ -130,7 +129,9 @@ export const Feed = () => {
               hour12: true,
               month: 'short',
               day: 'numeric'
-            })
+            }),
+            isLiked: (post as any).isLikedByUser || false,
+            isSaved: (post as any).isSavedByUser || false
           }}
           onCopyPrompt={() => handleCopyPrompt(post.prompt || '')}
           onLike={() => handleLike(post.id)}

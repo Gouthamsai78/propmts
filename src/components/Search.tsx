@@ -22,20 +22,36 @@ export const Search = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 300);
+      // Only save to search history if query is substantial and user pressed enter or waited
+      if (searchQuery.trim().length > 2 && searchQuery !== debouncedQuery) {
+        if (user) {
+          addSearchHistoryMutation.mutate(searchQuery.trim());
+        }
+      }
+    }, 800); // Increased debounce time
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, user, addSearchHistoryMutation, debouncedQuery]);
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (query.trim() && user) {
-      addSearchHistoryMutation.mutate(query);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim() && user) {
+      addSearchHistoryMutation.mutate(searchQuery.trim());
+      setDebouncedQuery(searchQuery);
     }
   };
 
   const handleHistoryClick = (query: string) => {
     setSearchQuery(query);
+    setDebouncedQuery(query);
+  };
+
+  const handleTrendingClick = (tag: string) => {
+    setSearchQuery(tag);
+    setDebouncedQuery(tag);
+    if (user) {
+      addSearchHistoryMutation.mutate(tag);
+    }
   };
 
   return (
@@ -44,16 +60,18 @@ export const Search = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Search</h2>
         
         {/* Search Bar */}
-        <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search prompts, users, communities..."
-            className="w-full pl-10 pr-4 py-3 bg-white rounded-2xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          />
-        </div>
+        <form onSubmit={handleSearchSubmit}>
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search prompts, users, communities..."
+              className="w-full pl-10 pr-4 py-3 bg-white rounded-2xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+        </form>
       </div>
 
       {/* Search Results */}
@@ -123,7 +141,7 @@ export const Search = () => {
             {trendingTags.map((tag, index) => (
               <button
                 key={index}
-                onClick={() => handleSearch(tag)}
+                onClick={() => handleTrendingClick(tag)}
                 className="px-3 py-2 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 rounded-full text-sm font-medium hover:from-purple-100 hover:to-blue-100 transition-colors"
               >
                 #{tag}
