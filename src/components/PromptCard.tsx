@@ -67,7 +67,7 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
             alt={post.title}
             className="w-full h-64 object-cover"
           />
-          {post.allowCopy && (
+          {post.allowCopy && post.prompt && (
             <button
               onClick={onCopyPrompt}
               className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white p-2 rounded-full hover:bg-black/70 transition-all duration-200"
@@ -81,19 +81,23 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
       {/* Content */}
       <div className="p-4">
         <h3 className="font-bold text-lg text-gray-800 mb-2">{post.title}</h3>
-        <p className="text-gray-600 mb-3">{post.description}</p>
+        {post.description && (
+          <p className="text-gray-600 mb-3">{post.description}</p>
+        )}
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {post.tags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
+        {post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {post.tags.map((tag, index) => (
+              <span
+                key={index}
+                className="bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Prompt */}
         {post.prompt && (

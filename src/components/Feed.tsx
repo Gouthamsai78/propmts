@@ -2,54 +2,10 @@
 import { useState } from "react";
 import { PromptCard } from "./PromptCard";
 import { useToast } from "@/hooks/use-toast";
-
-// Mock data for demonstration
-const mockPosts = [
-  {
-    id: 1,
-    title: "Perfect ChatGPT Prompt for Creative Writing",
-    description: "This prompt helps generate engaging story ideas with rich character development and plot twists.",
-    prompt: "You are a creative writing assistant. Generate a story idea with: 1) A compelling protagonist with a clear motivation, 2) An interesting conflict or challenge, 3) A unique setting, 4) A surprising plot twist. Make it engaging and original.",
-    tags: ["chatgpt", "writing", "creative"],
-    author: "Sarah Chen",
-    authorAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150",
-    likes: 234,
-    comments: 18,
-    image: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400",
-    allowCopy: true,
-    timestamp: "2 hours ago"
-  },
-  {
-    id: 2,
-    title: "Midjourney Architecture Prompt",
-    description: "Create stunning architectural visualizations with this detailed prompt structure.",
-    prompt: "architectural visualization of a modern sustainable house, glass walls, wooden accents, surrounded by forest, golden hour lighting, hyper-realistic, 8k resolution --ar 16:9 --v 5",
-    tags: ["midjourney", "architecture", "design"],
-    author: "Alex Rodriguez",
-    authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-    likes: 189,
-    comments: 12,
-    image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400",
-    allowCopy: true,
-    timestamp: "4 hours ago"
-  },
-  {
-    id: 3,
-    title: "Code Review Assistant Prompt",
-    description: "Get detailed code reviews and improvement suggestions from AI.",
-    prompt: "Act as a senior software engineer conducting a code review. Analyze the provided code for: 1) Code quality and best practices, 2) Potential bugs or security issues, 3) Performance optimizations, 4) Readability improvements. Provide specific, actionable feedback.",
-    tags: ["coding", "review", "development"],
-    author: "Mike Johnson",
-    authorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-    likes: 156,
-    comments: 23,
-    allowCopy: true,
-    timestamp: "6 hours ago"
-  }
-];
+import { usePosts } from "@/hooks/usePosts";
 
 export const Feed = () => {
-  const [posts] = useState(mockPosts);
+  const { data: posts, isLoading, error } = usePosts();
   const { toast } = useToast();
 
   const handleCopyPrompt = (prompt: string) => {
@@ -74,6 +30,52 @@ export const Feed = () => {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="max-w-md mx-auto px-4 space-y-4">
+        <div className="text-center py-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">Discover Prompts</h2>
+          <p className="text-gray-600">Fuel your AI journey</p>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                <div className="space-y-1">
+                  <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                  <div className="w-16 h-3 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="w-full h-4 bg-gray-200 rounded"></div>
+                <div className="w-3/4 h-4 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-md mx-auto px-4 text-center py-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Something went wrong</h2>
+        <p className="text-gray-600">Unable to load posts. Please try again later.</p>
+      </div>
+    );
+  }
+
+  if (!posts || posts.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 text-center py-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">No Posts Yet</h2>
+        <p className="text-gray-600">Be the first to share a prompt! Create your first post to get started.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md mx-auto px-4 space-y-4">
       <div className="text-center py-4">
@@ -84,8 +86,27 @@ export const Feed = () => {
       {posts.map((post) => (
         <PromptCard
           key={post.id}
-          post={post}
-          onCopyPrompt={() => handleCopyPrompt(post.prompt)}
+          post={{
+            id: post.id,
+            title: post.title,
+            description: post.content || '',
+            prompt: post.prompt || '',
+            tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
+            author: post.users?.username || 'Anonymous',
+            authorAvatar: post.users?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.users?.username || 'anonymous'}`,
+            likes: post.likes_count || 0,
+            comments: post.comments_count || 0,
+            image: post.image_url,
+            allowCopy: post.allow_copy ?? true,
+            timestamp: new Date(post.created_at).toLocaleDateString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              month: 'short',
+              day: 'numeric'
+            })
+          }}
+          onCopyPrompt={() => handleCopyPrompt(post.prompt || '')}
           onLike={() => handleLike(post.id)}
           onSave={() => handleSave(post.id)}
         />

@@ -32,14 +32,22 @@ export const useCreatePost = () => {
     mutationFn: async (postData: {
       title: string;
       content: string;
-      category?: string;
+      prompt?: string | null;
+      category?: string | null;
+      allow_copy?: boolean;
+      image_url?: string | null;
     }) => {
       if (!user) throw new Error('User must be logged in');
       
       const { data, error } = await supabase
         .from('posts')
         .insert({
-          ...postData,
+          title: postData.title,
+          content: postData.content,
+          prompt: postData.prompt,
+          category: postData.category,
+          allow_copy: postData.allow_copy ?? true,
+          image_url: postData.image_url,
           user_id: user.id,
         })
         .select()
