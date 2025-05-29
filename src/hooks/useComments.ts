@@ -9,27 +9,57 @@ export const useComments = (postId: string) => {
     queryFn: async () => {
       console.log('Fetching comments for post:', postId);
       
-      const { data, error } = await supabase
+      // First fetch comments
+      const { data: comments, error: commentsError } = await supabase
         .from('comments')
-        .select(`
-          *,
-          users (
-            id,
-            username,
-            avatar_url,
-            display_name
-          )
-        `)
+        .select('*')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
       
-      if (error) {
-        console.error('Error fetching comments:', error);
-        throw error;
+      if (commentsError) {
+        console.error('Error fetching comments:', commentsError);
+        throw commentsError;
       }
       
-      console.log('Comments fetched:', data?.length || 0);
-      return data || [];
+      console.log('Comments fetched:', comments?.length || 0);
+      
+      if (!comments || comments.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs from comments
+      const userIds = [...new Set(comments.map(comment => comment.user_id))];
+      
+      // Fetch user data for all comment authors
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, username, avatar_url, display_name')
+        .in('id', userIds);
+      
+      if (usersError) {
+        console.error('Error fetching users for comments:', usersError);
+        // Continue without user data rather than failing completely
+      }
+
+      // Create a map for quick user lookup
+      const usersMap = new Map((users || []).map(user => [user.id, user]));
+
+      // Combine comments with user data
+      const commentsWithUserData = comments.map(comment => {
+        const userData = usersMap.get(comment.user_id);
+        return {
+          ...comment,
+          users: userData || {
+            id: comment.user_id,
+            username: 'Anonymous',
+            avatar_url: null,
+            display_name: 'Anonymous'
+          }
+        };
+      });
+
+      console.log('Comments with user data:', commentsWithUserData.length);
+      return commentsWithUserData;
     },
   });
 };
@@ -51,15 +81,7 @@ export const useCreateComment = () => {
           user_id: user.id,
           content: content,
         })
-        .select(`
-          *,
-          users (
-            id,
-            username,
-            avatar_url,
-            display_name
-          )
-        `)
+        .select()
         .single();
       
       if (error) {
