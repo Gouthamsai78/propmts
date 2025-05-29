@@ -1,6 +1,10 @@
 
 import { useState } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal } from "lucide-react";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from "@/hooks/use-toast";
 
 interface Post {
   id: string;
@@ -28,14 +32,75 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const savePostMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('User must be logged in');
+      
+      if (isSaved) {
+        // Remove from saved
+        const { error } = await supabase
+          .from('saved_posts')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+      } else {
+        // Add to saved
+        const { error } = await supabase
+          .from('saved_posts')
+          .insert({
+            post_id: post.id,
+            user_id: user.id
+          });
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+      toast({
+        title: isSaved ? "Removed from saved" : "Saved!",
+        description: isSaved ? "Post removed from your collection." : "Post saved to your collection.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleLike = () => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please log in to like posts.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsLiked(!isLiked);
     onLike();
   };
 
   const handleSave = () => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please log in to save posts.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsSaved(!isSaved);
+    savePostMutation.mutate();
     onSave();
   };
 
@@ -147,7 +212,8 @@ export const PromptCard = ({ post, onCopyPrompt, onLike, onSave }: PromptCardPro
           </div>
           <button
             onClick={handleSave}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            disabled={savePostMutation.isPending}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
           >
             <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-purple-500 text-purple-500' : 'text-gray-600'}`} />
           </button>

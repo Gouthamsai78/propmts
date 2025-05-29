@@ -1,43 +1,24 @@
 
 import { useState } from "react";
 import { Settings, Grid, Bookmark, Crown } from "lucide-react";
-
-const mockUser = {
-  username: "sarah_prompts",
-  displayName: "Sarah Chen",
-  bio: "AI enthusiast sharing creative prompts for writers and developers ✨",
-  avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150",
-  followers: 1250,
-  following: 340,
-  posts: 28,
-  isVerified: true
-};
-
-const mockUserPosts = [
-  {
-    id: 1,
-    image: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=300",
-    likes: 234
-  },
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300",
-    likes: 189
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=300",
-    likes: 156
-  },
-  {
-    id: 4,
-    image: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=300",
-    likes: 98
-  }
-];
+import { useUserProfile, useUserPosts, useSavedPosts } from "@/hooks/useProfile";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const Profile = () => {
   const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
+  const { user } = useAuth();
+  const { data: userProfile } = useUserProfile();
+  const { data: userPosts } = useUserPosts();
+  const { data: savedPosts } = useSavedPosts();
+
+  if (!user || !userProfile) {
+    return (
+      <div className="max-w-md mx-auto px-4 text-center py-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Please log in</h2>
+        <p className="text-gray-600">You need to be logged in to view your profile.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto px-4 space-y-6">
@@ -53,35 +34,33 @@ export const Profile = () => {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center space-x-4 mb-4">
           <img
-            src={mockUser.avatar}
-            alt={mockUser.displayName}
+            src={userProfile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.username}`}
+            alt={userProfile.display_name || userProfile.username}
             className="w-20 h-20 rounded-full object-cover border-4 border-gradient-to-r from-purple-500 to-blue-500"
           />
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-1">
-              <h3 className="text-xl font-bold text-gray-800">{mockUser.displayName}</h3>
-              {mockUser.isVerified && (
-                <Crown className="w-5 h-5 text-yellow-500" />
-              )}
+              <h3 className="text-xl font-bold text-gray-800">{userProfile.display_name || userProfile.username}</h3>
+              <Crown className="w-5 h-5 text-yellow-500" />
             </div>
-            <p className="text-gray-600">@{mockUser.username}</p>
+            <p className="text-gray-600">@{userProfile.username}</p>
           </div>
         </div>
         
-        <p className="text-gray-700 mb-4">{mockUser.bio}</p>
+        <p className="text-gray-700 mb-4">{userProfile.bio || "AI enthusiast sharing creative prompts ✨"}</p>
         
         {/* Stats */}
         <div className="flex items-center justify-around py-4 border-t border-gray-100">
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-800">{mockUser.posts}</p>
+            <p className="text-2xl font-bold text-gray-800">{userProfile.posts_count || userPosts?.length || 0}</p>
             <p className="text-sm text-gray-600">Posts</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-800">{mockUser.followers}</p>
+            <p className="text-2xl font-bold text-gray-800">{userProfile.followers_count || 0}</p>
             <p className="text-sm text-gray-600">Followers</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-800">{mockUser.following}</p>
+            <p className="text-2xl font-bold text-gray-800">{userProfile.following_count || 0}</p>
             <p className="text-sm text-gray-600">Following</p>
           </div>
         </div>
@@ -127,29 +106,60 @@ export const Profile = () => {
         {/* Content Grid */}
         <div className="p-4">
           {activeTab === 'posts' && (
-            <div className="grid grid-cols-2 gap-2">
-              {mockUserPosts.map((post) => (
-                <div key={post.id} className="relative aspect-square group">
-                  <img
-                    src={post.image}
-                    alt="Post"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-200 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                      {post.likes} likes
-                    </span>
-                  </div>
+            <div>
+              {userPosts && userPosts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {userPosts.map((post) => (
+                    <div key={post.id} className="relative aspect-square group">
+                      <img
+                        src={post.image_url || "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=300"}
+                        alt={post.title}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-200 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                          {post.likes_count || 0} likes
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="text-center py-12">
+                  <Grid className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No posts yet</p>
+                  <p className="text-sm text-gray-400">Share your first prompt to get started</p>
+                </div>
+              )}
             </div>
           )}
           
           {activeTab === 'saved' && (
-            <div className="text-center py-12">
-              <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No saved posts yet</p>
-              <p className="text-sm text-gray-400">Posts you save will appear here</p>
+            <div>
+              {savedPosts && savedPosts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {savedPosts.map((savedPost) => (
+                    <div key={savedPost.id} className="relative aspect-square group">
+                      <img
+                        src={(savedPost.posts as any)?.image_url || "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=300"}
+                        alt={(savedPost.posts as any)?.title || "Saved post"}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-200 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                          {(savedPost.posts as any)?.likes_count || 0} likes
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No saved posts yet</p>
+                  <p className="text-sm text-gray-400">Posts you save will appear here</p>
+                </div>
+              )}
             </div>
           )}
         </div>
