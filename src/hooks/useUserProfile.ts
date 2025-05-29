@@ -12,6 +12,8 @@ export const useUserProfile = (userId?: string) => {
     queryFn: async () => {
       if (!targetUserId) throw new Error('User ID required');
       
+      console.log('Fetching user profile for:', targetUserId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -22,6 +24,8 @@ export const useUserProfile = (userId?: string) => {
         console.error('Error fetching user profile:', error);
         throw error;
       }
+      
+      console.log('User profile fetched:', data);
       return data;
     },
     enabled: !!targetUserId,
@@ -32,6 +36,8 @@ export const usePublicUserProfile = (userId: string) => {
   return useQuery({
     queryKey: ['publicUserProfile', userId],
     queryFn: async () => {
+      console.log('Fetching public user profile for:', userId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -42,6 +48,8 @@ export const usePublicUserProfile = (userId: string) => {
         console.error('Error fetching public user profile:', error);
         throw error;
       }
+      
+      console.log('Public user profile fetched:', data);
       return data;
     },
     enabled: !!userId,
@@ -59,11 +67,12 @@ export const useUserPosts = (userId?: string) => {
       
       console.log('Fetching posts for user:', targetUserId);
       
-      const { data, error } = await supabase
+      const { data: posts, error } = await supabase
         .from('posts')
         .select(`
           *,
           users (
+            id,
             username,
             avatar_url,
             display_name
@@ -77,8 +86,40 @@ export const useUserPosts = (userId?: string) => {
         throw error;
       }
       
-      console.log('Fetched posts:', data);
-      return data || [];
+      console.log('User posts fetched:', posts?.length || 0);
+      
+      // Add interaction states if current user is viewing
+      if (user && posts) {
+        const postIds = posts.map(post => post.id);
+        
+        // Fetch user's reactions and saved posts
+        const [reactionsResult, savedResult] = await Promise.all([
+          supabase
+            .from('reactions')
+            .select('post_id, reaction_type')
+            .eq('user_id', user.id)
+            .in('post_id', postIds),
+          supabase
+            .from('saved_posts')
+            .select('post_id')
+            .eq('user_id', user.id)
+            .in('post_id', postIds)
+        ]);
+        
+        const reactions = reactionsResult.data || [];
+        const savedPosts = savedResult.data || [];
+        
+        const likesMap = new Map(reactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
+        const savedMap = new Map(savedPosts.map(s => [s.post_id, true]));
+        
+        return posts.map(post => ({
+          ...post,
+          isLikedByUser: likesMap.has(post.id),
+          isSavedByUser: savedMap.has(post.id)
+        }));
+      }
+      
+      return posts || [];
     },
     enabled: !!targetUserId,
   });
@@ -94,7 +135,7 @@ export const useSavedPosts = () => {
       
       console.log('Fetching saved posts for user:', user.id);
       
-      // First get the saved post IDs
+      // Get saved post IDs
       const { data: savedPostIds, error: savedError } = await supabase
         .from('saved_posts')
         .select('post_id')
@@ -110,13 +151,16 @@ export const useSavedPosts = () => {
         return [];
       }
       
-      // Then get the actual posts
+      console.log('Found saved post IDs:', savedPostIds.length);
+      
+      // Get the actual posts
       const postIds = savedPostIds.map(sp => sp.post_id);
       const { data: posts, error: postsError } = await supabase
         .from('posts')
         .select(`
           *,
           users (
+            id,
             username,
             avatar_url,
             display_name
@@ -130,8 +174,29 @@ export const useSavedPosts = () => {
         throw postsError;
       }
       
-      console.log('Fetched saved posts:', posts);
-      return posts || [];
+      console.log('Saved posts fetched:', posts?.length || 0);
+      
+      // Add interaction states
+      if (posts) {
+        const [reactionsResult] = await Promise.all([
+          supabase
+            .from('reactions')
+            .select('post_id, reaction_type')
+            .eq('user_id', user.id)
+            .in('post_id', postIds)
+        ]);
+        
+        const reactions = reactionsResult.data || [];
+        const likesMap = new Map(reactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
+        
+        return posts.map(post => ({
+          ...post,
+          isLikedByUser: likesMap.has(post.id),
+          isSavedByUser: true // All these posts are saved by definition
+        }));
+      }
+      
+      return [];
     },
     enabled: !!user,
   });
@@ -150,6 +215,8 @@ export const useUpdateProfile = () => {
     }) => {
       if (!user) throw new Error('User must be logged in');
       
+      console.log('Updating profile:', profileData);
+      
       const { data, error } = await supabase
         .from('users')
         .update(profileData)
@@ -161,6 +228,8 @@ export const useUpdateProfile = () => {
         console.error('Error updating profile:', error);
         throw error;
       }
+      
+      console.log('Profile updated:', data);
       return data;
     },
     onSuccess: () => {

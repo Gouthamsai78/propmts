@@ -9,10 +9,20 @@ export const usePosts = () => {
   return useQuery({
     queryKey: ['posts', user?.id],
     queryFn: async () => {
-      // First, fetch all posts
+      console.log('Fetching posts...');
+      
+      // Fetch all posts with user data and counts
       const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select('*')
+        .select(`
+          *,
+          users (
+            id,
+            username,
+            avatar_url,
+            display_name
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (postsError) {
@@ -21,25 +31,11 @@ export const usePosts = () => {
       }
 
       if (!posts || posts.length === 0) {
+        console.log('No posts found');
         return [];
       }
 
-      // Get unique user IDs from posts
-      const userIds = [...new Set(posts.map(post => post.user_id))];
-      
-      // Fetch user data for all unique user IDs
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('id, username, avatar_url, display_name')
-        .in('id', userIds);
-      
-      if (usersError) {
-        console.error('Error fetching users:', usersError);
-        throw usersError;
-      }
-
-      // Create a map of users by ID for quick lookup
-      const usersMap = new Map(users?.map(user => [user.id, user]) || []);
+      console.log('Posts fetched:', posts.length);
 
       // If user is logged in, fetch their reactions and saved posts
       let userReactions: any[] = [];
@@ -49,37 +45,45 @@ export const usePosts = () => {
         const postIds = posts.map(post => post.id);
         
         // Fetch user's reactions
-        const { data: reactions } = await supabase
+        const { data: reactions, error: reactionsError } = await supabase
           .from('reactions')
           .select('post_id, reaction_type')
           .eq('user_id', user.id)
           .in('post_id', postIds);
         
-        userReactions = reactions || [];
+        if (reactionsError) {
+          console.error('Error fetching reactions:', reactionsError);
+        } else {
+          userReactions = reactions || [];
+        }
         
         // Fetch user's saved posts
-        const { data: savedPosts } = await supabase
+        const { data: savedPosts, error: savedError } = await supabase
           .from('saved_posts')
           .select('post_id')
           .eq('user_id', user.id)
           .in('post_id', postIds);
           
-        userSavedPosts = savedPosts || [];
+        if (savedError) {
+          console.error('Error fetching saved posts:', savedError);
+        } else {
+          userSavedPosts = savedPosts || [];
+        }
       }
 
       // Create maps for quick lookup
       const likesMap = new Map(userReactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
       const savedMap = new Map(userSavedPosts.map(s => [s.post_id, true]));
 
-      // Combine posts with user data and interaction states
-      const postsWithUsers = posts.map(post => ({
+      // Combine posts with interaction states
+      const postsWithInteractions = posts.map(post => ({
         ...post,
-        users: usersMap.get(post.user_id) || null,
         isLikedByUser: likesMap.has(post.id),
         isSavedByUser: savedMap.has(post.id)
       }));
 
-      return postsWithUsers;
+      console.log('Posts with interactions:', postsWithInteractions.length);
+      return postsWithInteractions;
     },
   });
 };
@@ -109,15 +113,23 @@ export const useCreatePost = () => {
           allow_copy: postData.allow_copy ?? true,
           image_url: postData.image_url,
           user_id: user.id,
+          likes_count: 0,
+          comments_count: 0,
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating post:', error);
+        throw error;
+      }
+      
+      console.log('Post created:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 };
@@ -129,6 +141,8 @@ export const useLikePost = () => {
   return useMutation({
     mutationFn: async (postId: string) => {
       if (!user) throw new Error('User must be logged in');
+      
+      console.log('Toggling like for post:', postId);
       
       // Check if user already liked the post
       const { data: existingLike } = await supabase
@@ -146,11 +160,16 @@ export const useLikePost = () => {
           .delete()
           .eq('id', existingLike.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error unliking post:', error);
+          throw error;
+        }
+        
+        console.log('Post unliked');
         return { action: 'unliked' };
       } else {
         // Like the post
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('reactions')
           .insert({
             post_id: postId,
@@ -158,12 +177,18 @@ export const useLikePost = () => {
             reaction_type: 'like'
           });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error liking post:', error);
+          throw error;
+        }
+        
+        console.log('Post liked');
         return { action: 'liked' };
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 };
@@ -175,6 +200,8 @@ export const useSavePost = () => {
   return useMutation({
     mutationFn: async (postId: string) => {
       if (!user) throw new Error('User must be logged in');
+      
+      console.log('Toggling save for post:', postId);
       
       // Check if post is already saved
       const { data: existingSave } = await supabase
@@ -191,24 +218,35 @@ export const useSavePost = () => {
           .delete()
           .eq('id', existingSave.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error unsaving post:', error);
+          throw error;
+        }
+        
+        console.log('Post unsaved');
         return { action: 'unsaved' };
       } else {
         // Save the post
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('saved_posts')
           .insert({
             post_id: postId,
             user_id: user.id
           });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error saving post:', error);
+          throw error;
+        }
+        
+        console.log('Post saved');
         return { action: 'saved' };
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 };
