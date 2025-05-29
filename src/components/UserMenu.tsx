@@ -12,7 +12,11 @@ import {
 } from '@/components/ui/dialog';
 import { LogOut, User } from 'lucide-react';
 
-export const UserMenu = () => {
+interface UserMenuProps {
+  onProfileClick: () => void;
+}
+
+export const UserMenu = ({ onProfileClick }: UserMenuProps) => {
   const { user, signOut } = useAuth();
 
   if (!user) return null;
@@ -37,6 +41,14 @@ export const UserMenu = () => {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col space-y-2">
+          <Button
+            variant="outline"
+            onClick={onProfileClick}
+            className="w-full justify-start"
+          >
+            <User className="mr-2 h-4 w-4" />
+            View Profile
+          </Button>
           <Button
             variant="outline"
             onClick={signOut}
