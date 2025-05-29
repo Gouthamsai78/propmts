@@ -1,37 +1,40 @@
 
 import { useState, useEffect } from "react";
-import { Search as SearchIcon, Clock, TrendingUp } from "lucide-react";
+import { Search as SearchIcon, Clock, TrendingUp, ArrowLeft } from "lucide-react";
 import { useSearchHistory, useAddSearchHistory, useSearchPosts } from "@/hooks/useSearch";
 import { PromptCard } from "./PromptCard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useLikePost, useSavePost } from "@/hooks/usePosts";
 
-export const Search = () => {
+interface SearchProps {
+  onUserClick?: (userId: string) => void;
+}
+
+export const Search = ({ onUserClick }: SearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const { user } = useAuth();
+  const { toast } = useToast();
   const { data: searchHistory } = useSearchHistory();
   const { data: searchResults } = useSearchPosts(debouncedQuery);
   const addSearchHistoryMutation = useAddSearchHistory();
+  const likePostMutation = useLikePost();
+  const savePostMutation = useSavePost();
 
   const trendingTags = [
     "chatgpt", "midjourney", "coding", "creative", "writing", 
     "productivity", "design", "photography", "business", "education"
   ];
 
-  // Debounce search query
+  // Debounce search query for results
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-      // Only save to search history if query is substantial and user pressed enter or waited
-      if (searchQuery.trim().length > 2 && searchQuery !== debouncedQuery) {
-        if (user) {
-          addSearchHistoryMutation.mutate(searchQuery.trim());
-        }
-      }
-    }, 800); // Increased debounce time
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, user, addSearchHistoryMutation, debouncedQuery]);
+  }, [searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +54,46 @@ export const Search = () => {
     setDebouncedQuery(tag);
     if (user) {
       addSearchHistoryMutation.mutate(tag);
+    }
+  };
+
+  const handleCopyPrompt = (prompt: string) => {
+    navigator.clipboard.writeText(prompt);
+    toast({
+      title: "Prompt copied!",
+      description: "The prompt has been copied to your clipboard.",
+    });
+  };
+
+  const handleLike = async (postId: string) => {
+    try {
+      const result = await likePostMutation.mutateAsync(postId);
+      toast({
+        title: result.action === 'liked' ? "Liked!" : "Unliked!",
+        description: result.action === 'liked' ? "Post added to your likes." : "Post removed from your likes.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to like post. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSave = async (postId: string) => {
+    try {
+      const result = await savePostMutation.mutateAsync(postId);
+      toast({
+        title: result.action === 'saved' ? "Saved!" : "Unsaved!",
+        description: result.action === 'saved' ? "Post saved to your collection." : "Post removed from your collection.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Unable to save post. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -87,8 +130,9 @@ export const Search = () => {
                 description: post.content || '',
                 prompt: post.prompt || '',
                 tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
-                author: (post.users as any)?.username || 'Anonymous',
+                author: (post.users as any)?.display_name || (post.users as any)?.username || 'Anonymous',
                 authorAvatar: (post.users as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(post.users as any)?.username || 'anonymous'}`,
+                authorId: post.user_id,
                 likes: post.likes_count || 0,
                 comments: post.comments_count || 0,
                 image: post.image_url,
@@ -101,9 +145,10 @@ export const Search = () => {
                   day: 'numeric'
                 })
               }}
-              onCopyPrompt={() => {}}
-              onLike={() => {}}
-              onSave={() => {}}
+              onCopyPrompt={() => handleCopyPrompt(post.prompt || '')}
+              onLike={() => handleLike(post.id)}
+              onSave={() => handleSave(post.id)}
+              onAuthorClick={onUserClick}
             />
           ))}
         </div>

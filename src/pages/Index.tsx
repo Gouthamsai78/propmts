@@ -13,33 +13,47 @@ type ActiveTab = 'home' | 'communities' | 'search' | 'explore' | 'create' | 'pro
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
+  const [viewingUserId, setViewingUserId] = useState<string | undefined>();
 
   const handleProfileClick = () => {
+    setViewingUserId(undefined);
     setActiveTab('profile');
+  };
+
+  const handleUserClick = (userId: string) => {
+    setViewingUserId(userId);
+    setActiveTab('profile');
+  };
+
+  const handleSearchClick = () => {
+    setActiveTab('search');
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <Feed />;
+        return <Feed onUserClick={handleUserClick} />;
       case 'communities':
         return <Communities />;
       case 'search':
-        return <Search />;
+        return <Search onUserClick={handleUserClick} />;
       case 'explore':
-        return <Explore />;
+        return <Explore onUserClick={handleUserClick} />;
       case 'create':
         return <CreatePost />;
       case 'profile':
-        return <Profile />;
+        return <Profile userId={viewingUserId} onUserClick={handleUserClick} />;
       default:
-        return <Feed />;
+        return <Feed onUserClick={handleUserClick} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      <Header onProfileClick={handleProfileClick} />
+      <Header 
+        onProfileClick={handleProfileClick} 
+        onSearchClick={handleSearchClick}
+      />
       <main className="pb-20 pt-16">
         {renderContent()}
       </main>

@@ -1,215 +1,227 @@
 
 import { useState } from "react";
-import { Camera, Tag } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Camera, X } from "lucide-react";
 import { useCreatePost } from "@/hooks/usePosts";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const CreatePost = () => {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [content, setContent] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [tags, setTags] = useState("");
+  const [category, setCategory] = useState("");
   const [allowCopy, setAllowCopy] = useState(true);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [imageUrl, setImageUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const { user } = useAuth();
+  const { toast } = useToast();
   const createPostMutation = useCreatePost();
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const categories = [
+    "chatgpt",
+    "midjourney",
+    "coding", 
+    "creative",
+    "writing",
+    "productivity",
+    "design",
+    "photography",
+    "business",
+    "education"
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create a post.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!title.trim()) {
       toast({
         title: "Title required",
         description: "Please enter a title for your post.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to create a post.",
-        variant: "destructive"
-      });
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
       await createPostMutation.mutateAsync({
         title: title.trim(),
-        content: description.trim(),
+        content: content.trim() || null,
         prompt: prompt.trim() || null,
-        category: tags.trim() || null,
+        category: category || null,
         allow_copy: allowCopy,
-        image_url: selectedImage || null,
+        image_url: imageUrl.trim() || null,
       });
+
+      // Reset form
+      setTitle("");
+      setContent("");
+      setPrompt("");
+      setCategory("");
+      setAllowCopy(true);
+      setImageUrl("");
 
       toast({
         title: "Post created!",
-        description: "Your prompt has been shared with the community.",
+        description: "Your post has been shared successfully.",
       });
-      
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setPrompt("");
-      setTags("");
-      setSelectedImage(null);
-      setAllowCopy(true);
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Create post error:', error);
       toast({
-        title: "Failed to create post",
-        description: "There was an error creating your post. Please try again.",
-        variant: "destructive"
+        title: "Error",
+        description: "Unable to create post. Please try again.",
+        variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (!user) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Sign In Required</h2>
-        <p className="text-gray-600">Please sign in to create and share prompts.</p>
-      </div>
-    );
-  }
+  const removeImage = () => {
+    setImageUrl("");
+  };
 
   return (
-    <div className="max-w-md mx-auto px-4 space-y-4">
-      <div className="py-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-1">Create Post</h2>
-        <p className="text-gray-600">Share your amazing prompts</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Image Upload */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Media (Optional)</label>
-          {selectedImage ? (
-            <div className="relative">
-              <img src={selectedImage} alt="Upload preview" className="w-full h-48 object-cover rounded-xl" />
-              <button
-                type="button"
-                onClick={() => setSelectedImage(null)}
-                className="absolute top-2 right-2 bg-black/50 text-white px-3 py-1 rounded-full text-sm"
-              >
-                Remove
-              </button>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-purple-400 transition-colors">
-              <Camera className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-sm text-gray-500">Upload image or video</span>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+    <div className="max-w-md mx-auto px-4 py-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Post</h2>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title */}
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+              Title *
             </label>
-          )}
-        </div>
-
-        {/* Title */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Title *</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Give your prompt a catchy title..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            required
-          />
-        </div>
-
-        {/* Description */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe what your prompt does and how to use it..."
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-          />
-        </div>
-
-        {/* Prompt */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Prompt</label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your AI prompt here..."
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-          />
-        </div>
-
-        {/* Tags */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Category/Tags</label>
-          <div className="flex items-center space-x-2">
-            <Tag className="w-5 h-5 text-gray-400" />
             <input
               type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="chatgpt, creative, writing"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter your post title..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              required
             />
           </div>
-          <p className="text-xs text-gray-500 mt-2">Separate tags with commas</p>
-        </div>
 
-        {/* Allow Copy Toggle */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Allow prompt copying</label>
-              <p className="text-xs text-gray-500">Let others copy your prompt easily</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAllowCopy(!allowCopy)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                allowCopy ? 'bg-purple-500' : 'bg-gray-200'
-              }`}
+          {/* Category */}
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+              Category
+            </label>
+            <select
+              id="category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  allowCopy ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+              <option value="">Select a category...</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={createPostMutation.isPending}
-          className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-4 px-6 rounded-2xl font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {createPostMutation.isPending ? 'Creating...' : 'Share Prompt'}
-        </button>
-      </form>
+          {/* Content */}
+          <div>
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Describe your post..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          {/* Prompt */}
+          <div>
+            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
+              AI Prompt
+            </label>
+            <textarea
+              id="prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Enter your AI prompt here..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-2">
+              Image URL (optional)
+            </label>
+            <input
+              type="url"
+              id="imageUrl"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Image Preview */}
+          {imageUrl && (
+            <div className="relative">
+              <img
+                src={imageUrl}
+                alt="Preview"
+                className="w-full h-48 object-cover rounded-lg"
+                onError={() => setImageUrl("")}
+              />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Allow Copy */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="allowCopy"
+              checked={allowCopy}
+              onChange={(e) => setAllowCopy(e.target.checked)}
+              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+            />
+            <label htmlFor="allowCopy" className="text-sm text-gray-700">
+              Allow others to copy this prompt
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isSubmitting || !title.trim()}
+            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            {isSubmitting ? "Creating..." : "Share Post"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

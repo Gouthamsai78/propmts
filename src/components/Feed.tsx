@@ -1,8 +1,13 @@
+
 import { PromptCard } from "./PromptCard";
 import { useToast } from "@/hooks/use-toast";
 import { usePosts, useLikePost, useSavePost } from "@/hooks/usePosts";
 
-export const Feed = () => {
+interface FeedProps {
+  onUserClick?: (userId: string) => void;
+}
+
+export const Feed = ({ onUserClick }: FeedProps) => {
   const { data: posts, isLoading, error } = usePosts();
   const { toast } = useToast();
   const likePostMutation = useLikePost();
@@ -119,6 +124,7 @@ export const Feed = () => {
             tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
             author: (post.users as any)?.display_name || (post.users as any)?.username || 'Anonymous',
             authorAvatar: (post.users as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(post.users as any)?.username || 'anonymous'}`,
+            authorId: post.user_id,
             likes: post.likes_count || 0,
             comments: post.comments_count || 0,
             image: post.image_url,
@@ -136,6 +142,7 @@ export const Feed = () => {
           onCopyPrompt={() => handleCopyPrompt(post.prompt || '')}
           onLike={() => handleLike(post.id)}
           onSave={() => handleSave(post.id)}
+          onAuthorClick={onUserClick}
         />
       ))}
     </div>
