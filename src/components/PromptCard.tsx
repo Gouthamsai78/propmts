@@ -43,7 +43,6 @@ export const PromptCard = ({
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likes);
   const [showComments, setShowComments] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,7 +58,6 @@ export const PromptCard = ({
     }
     
     setIsLiked(!isLiked);
-    setLikesCount(prevCount => isLiked ? prevCount - 1 : prevCount + 1);
     onLike();
   };
 
@@ -209,7 +207,7 @@ export const PromptCard = ({
                 className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
               >
                 <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-                <span className="text-sm font-medium text-gray-700">{likesCount}</span>
+                <span className="text-sm font-medium text-gray-700">{post.likes}</span>
               </button>
               <button 
                 onClick={handleComments}
