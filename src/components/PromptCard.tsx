@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal } from "lucide-react";
 
 interface Post {
-  id: number;
+  id: string;
   title: string;
   description: string;
   prompt: string;

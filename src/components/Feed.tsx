@@ -16,14 +16,14 @@ export const Feed = () => {
     });
   };
 
-  const handleLike = (postId: number) => {
+  const handleLike = (postId: string) => {
     toast({
       title: "Liked!",
       description: "Post added to your likes.",
     });
   };
 
-  const handleSave = (postId: number) => {
+  const handleSave = (postId: string) => {
     toast({
       title: "Saved!",
       description: "Post saved to your collection.",
@@ -92,8 +92,8 @@ export const Feed = () => {
             description: post.content || '',
             prompt: post.prompt || '',
             tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
-            author: post.users?.username || 'Anonymous',
-            authorAvatar: post.users?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.users?.username || 'anonymous'}`,
+            author: (post.users as any)?.username || 'Anonymous',
+            authorAvatar: (post.users as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(post.users as any)?.username || 'anonymous'}`,
             likes: post.likes_count || 0,
             comments: post.comments_count || 0,
             image: post.image_url,
