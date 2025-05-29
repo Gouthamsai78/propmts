@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,17 +66,10 @@ export const useUserPosts = (userId?: string) => {
       
       console.log('Fetching posts for user:', targetUserId);
       
+      // First fetch the posts
       const { data: posts, error } = await supabase
         .from('posts')
-        .select(`
-          *,
-          users (
-            id,
-            username,
-            avatar_url,
-            display_name
-          )
-        `)
+        .select('*')
         .eq('user_id', targetUserId)
         .order('created_at', { ascending: false });
       
@@ -88,6 +80,21 @@ export const useUserPosts = (userId?: string) => {
       
       console.log('User posts fetched:', posts?.length || 0);
       
+      if (!posts || posts.length === 0) {
+        return [];
+      }
+
+      // Fetch user data for the post author
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, username, avatar_url, display_name')
+        .eq('id', targetUserId)
+        .single();
+      
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+      }
+
       // Add interaction states if current user is viewing
       if (user && posts) {
         const postIds = posts.map(post => post.id);
@@ -114,12 +121,26 @@ export const useUserPosts = (userId?: string) => {
         
         return posts.map(post => ({
           ...post,
+          users: userData || {
+            id: targetUserId,
+            username: 'Anonymous',
+            avatar_url: null,
+            display_name: 'Anonymous'
+          },
           isLikedByUser: likesMap.has(post.id),
           isSavedByUser: savedMap.has(post.id)
         }));
       }
       
-      return posts || [];
+      return posts.map(post => ({
+        ...post,
+        users: userData || {
+          id: targetUserId,
+          username: 'Anonymous',
+          avatar_url: null,
+          display_name: 'Anonymous'
+        }
+      }));
     },
     enabled: !!targetUserId,
   });
@@ -157,15 +178,7 @@ export const useSavedPosts = () => {
       const postIds = savedPostIds.map(sp => sp.post_id);
       const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          users (
-            id,
-            username,
-            avatar_url,
-            display_name
-          )
-        `)
+        .select('*')
         .in('id', postIds)
         .order('created_at', { ascending: false });
       
@@ -176,27 +189,50 @@ export const useSavedPosts = () => {
       
       console.log('Saved posts fetched:', posts?.length || 0);
       
+      if (!posts || posts.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs from posts for author data
+      const userIds = [...new Set(posts.map(post => post.user_id))];
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, username, avatar_url, display_name')
+        .in('id', userIds);
+      
+      if (usersError) {
+        console.error('Error fetching user data for saved posts:', usersError);
+      }
+
+      // Create users map
+      const usersMap = new Map((users || []).map(u => [u.id, u]));
+      
       // Add interaction states
-      if (posts) {
-        const [reactionsResult] = await Promise.all([
-          supabase
-            .from('reactions')
-            .select('post_id, reaction_type')
-            .eq('user_id', user.id)
-            .in('post_id', postIds)
-        ]);
-        
-        const reactions = reactionsResult.data || [];
-        const likesMap = new Map(reactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
-        
-        return posts.map(post => ({
+      const [reactionsResult] = await Promise.all([
+        supabase
+          .from('reactions')
+          .select('post_id, reaction_type')
+          .eq('user_id', user.id)
+          .in('post_id', postIds)
+      ]);
+      
+      const reactions = reactionsResult.data || [];
+      const likesMap = new Map(reactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
+      
+      return posts.map(post => {
+        const userData = usersMap.get(post.user_id);
+        return {
           ...post,
+          users: userData || {
+            id: post.user_id,
+            username: 'Anonymous',
+            avatar_url: null,
+            display_name: 'Anonymous'
+          },
           isLikedByUser: likesMap.has(post.id),
           isSavedByUser: true // All these posts are saved by definition
-        }));
-      }
-      
-      return [];
+        };
+      });
     },
     enabled: !!user,
   });

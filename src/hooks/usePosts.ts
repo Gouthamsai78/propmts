@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,18 +10,10 @@ export const usePosts = () => {
     queryFn: async () => {
       console.log('Fetching posts...');
       
-      // Fetch all posts with user data and counts
+      // First fetch all posts
       const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          users (
-            id,
-            username,
-            avatar_url,
-            display_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (postsError) {
@@ -36,6 +27,23 @@ export const usePosts = () => {
       }
 
       console.log('Posts fetched:', posts.length);
+
+      // Get unique user IDs from posts
+      const userIds = [...new Set(posts.map(post => post.user_id))];
+      
+      // Fetch user data for all authors
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, username, avatar_url, display_name')
+        .in('id', userIds);
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        // Continue without user data rather than failing completely
+      }
+
+      // Create a map for quick user lookup
+      const usersMap = new Map((users || []).map(user => [user.id, user]));
 
       // If user is logged in, fetch their reactions and saved posts
       let userReactions: any[] = [];
@@ -75,15 +83,24 @@ export const usePosts = () => {
       const likesMap = new Map(userReactions.filter(r => r.reaction_type === 'like').map(r => [r.post_id, true]));
       const savedMap = new Map(userSavedPosts.map(s => [s.post_id, true]));
 
-      // Combine posts with interaction states
-      const postsWithInteractions = posts.map(post => ({
-        ...post,
-        isLikedByUser: likesMap.has(post.id),
-        isSavedByUser: savedMap.has(post.id)
-      }));
+      // Combine posts with user data and interaction states
+      const postsWithData = posts.map(post => {
+        const userData = usersMap.get(post.user_id);
+        return {
+          ...post,
+          users: userData || {
+            id: post.user_id,
+            username: 'Anonymous',
+            avatar_url: null,
+            display_name: 'Anonymous'
+          },
+          isLikedByUser: likesMap.has(post.id),
+          isSavedByUser: savedMap.has(post.id)
+        };
+      });
 
-      console.log('Posts with interactions:', postsWithInteractions.length);
-      return postsWithInteractions;
+      console.log('Posts with data:', postsWithData.length);
+      return postsWithData;
     },
   });
 };
