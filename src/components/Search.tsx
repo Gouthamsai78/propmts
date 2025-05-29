@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search as SearchIcon, Clock, Trending } from "lucide-react";
+import { Search as SearchIcon, Clock, TrendingUp } from "lucide-react";
 
 export const Search = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,7 +55,7 @@ export const Search = () => {
       {/* Trending Tags */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
         <div className="flex items-center space-x-2 mb-3">
-          <Trending className="w-5 h-5 text-gray-600" />
+          <TrendingUp className="w-5 h-5 text-gray-600" />
           <h3 className="font-semibold text-gray-800">Trending</h3>
         </div>
         <div className="flex flex-wrap gap-2">
