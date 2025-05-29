@@ -20,8 +20,11 @@ export const useComments = (postId: string) => {
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching comments:', error);
+        throw error;
+      }
+      return data || [];
     },
   });
 };
@@ -44,12 +47,16 @@ export const useCreateComment = () => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating comment:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['comments', variables.postId] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 };

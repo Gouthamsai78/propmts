@@ -20,14 +20,21 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
   const { toast } = useToast();
   
   const isOwnProfile = !userId || userId === user?.id;
-  const { data: profile } = useUserProfile();
-  const { data: userPosts } = useUserPosts(userId);
-  const { data: savedPosts } = useSavedPosts();
+  const targetUserId = userId || user?.id;
+  
+  console.log('Profile component - userId:', userId, 'user?.id:', user?.id, 'isOwnProfile:', isOwnProfile);
+  
+  const { data: profile, isLoading: profileLoading } = useUserProfile(targetUserId);
+  const { data: userPosts, isLoading: postsLoading } = useUserPosts(targetUserId);
+  const { data: savedPosts, isLoading: savedLoading } = useSavedPosts();
   const likePostMutation = useLikePost();
   const savePostMutation = useSavePost();
 
-  const displayProfile = profile; // For now, only show own profile
-  const displayPosts = activeTab === 'posts' ? userPosts : savedPosts;
+  console.log('Profile data:', profile);
+  console.log('User posts:', userPosts);
+  console.log('Saved posts:', savedPosts);
+
+  const displayPosts = activeTab === 'posts' ? userPosts : (isOwnProfile ? savedPosts : []);
 
   const handleCopyPrompt = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
@@ -45,6 +52,7 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
         description: result.action === 'liked' ? "Post added to your likes." : "Post removed from your likes.",
       });
     } catch (error) {
+      console.error('Error liking post:', error);
       toast({
         title: "Error",
         description: "Unable to like post. Please try again.",
@@ -61,6 +69,7 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
         description: result.action === 'saved' ? "Post saved to your collection." : "Post removed from your collection.",
       });
     } catch (error) {
+      console.error('Error saving post:', error);
       toast({
         title: "Error",
         description: "Unable to save post. Please try again.",
@@ -73,10 +82,18 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
     return <EditProfile onBack={() => setShowEditProfile(false)} />;
   }
 
-  if (!displayProfile) {
+  if (profileLoading) {
     return (
       <div className="max-w-md mx-auto px-4 py-8 text-center">
         <p className="text-gray-600">Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8 text-center">
+        <p className="text-gray-600">Profile not found.</p>
       </div>
     );
   }
@@ -88,15 +105,15 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <img
-              src={displayProfile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayProfile.username}`}
-              alt={displayProfile.username}
+              src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username}`}
+              alt={profile.username}
               className="w-16 h-16 rounded-full object-cover"
             />
             <div>
               <h2 className="text-xl font-bold text-gray-800">
-                {displayProfile.display_name || displayProfile.username}
+                {profile.display_name || profile.username}
               </h2>
-              <p className="text-gray-600">@{displayProfile.username}</p>
+              <p className="text-gray-600">@{profile.username}</p>
             </div>
           </div>
           {isOwnProfile && (
@@ -109,28 +126,28 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
           )}
         </div>
 
-        {displayProfile.bio && (
-          <p className="text-gray-700 mb-4">{displayProfile.bio}</p>
+        {profile.bio && (
+          <p className="text-gray-700 mb-4">{profile.bio}</p>
         )}
 
         {/* Stats */}
         <div className="flex justify-around pt-4 border-t border-gray-100">
           <div className="text-center">
-            <p className="text-xl font-bold text-gray-800">{displayProfile.posts_count || 0}</p>
+            <p className="text-xl font-bold text-gray-800">{userPosts?.length || 0}</p>
             <p className="text-sm text-gray-600">Posts</p>
           </div>
           <div className="text-center">
-            <p className="text-xl font-bold text-gray-800">{displayProfile.followers_count || 0}</p>
+            <p className="text-xl font-bold text-gray-800">{profile.followers_count || 0}</p>
             <p className="text-sm text-gray-600">Followers</p>
           </div>
           <div className="text-center">
-            <p className="text-xl font-bold text-gray-800">{displayProfile.following_count || 0}</p>
+            <p className="text-xl font-bold text-gray-800">{profile.following_count || 0}</p>
             <p className="text-sm text-gray-600">Following</p>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - Only show for own profile */}
       {isOwnProfile && (
         <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 p-1">
           <button
@@ -160,7 +177,11 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
 
       {/* Posts Grid */}
       <div className="space-y-4">
-        {displayPosts && displayPosts.length > 0 ? (
+        {(postsLoading || (activeTab === 'saved' && savedLoading)) ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>Loading posts...</p>
+          </div>
+        ) : displayPosts && displayPosts.length > 0 ? (
           displayPosts.map((post) => (
             <PromptCard
               key={post.id}
@@ -170,8 +191,8 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
                 description: post.content || '',
                 prompt: post.prompt || '',
                 tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
-                author: (post.users as any)?.display_name || (post.users as any)?.username || displayProfile.display_name || displayProfile.username,
-                authorAvatar: (post.users as any)?.avatar_url || displayProfile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayProfile.username}`,
+                author: (post.users as any)?.display_name || (post.users as any)?.username || 'Unknown',
+                authorAvatar: (post.users as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(post.users as any)?.username || 'unknown'}`,
                 authorId: post.user_id,
                 likes: post.likes_count || 0,
                 comments: post.comments_count || 0,
@@ -191,7 +212,7 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
               onLike={() => handleLike(post.id)}
               onSave={() => handleSave(post.id)}
               onAuthorClick={onUserClick}
-              showFollowButton={false}
+              showFollowButton={!isOwnProfile}
             />
           ))
         ) : (
