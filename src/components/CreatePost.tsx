@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Camera, Tag, Toggle } from "lucide-react";
+import { Camera, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export const CreatePost = () => {
@@ -111,13 +111,13 @@ export const CreatePost = () => {
           />
         </div>
 
-        {/* Prompt */}
+        {/* Prompt (Optional) */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Prompt</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Prompt (Optional)</label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your AI prompt here..."
+            placeholder="Enter your AI prompt here (optional)..."
             rows={4}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
           />

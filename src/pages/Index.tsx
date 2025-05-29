@@ -3,12 +3,13 @@ import { useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { Feed } from "@/components/Feed";
 import { Communities } from "@/components/Communities";
-import { Tools } from "@/components/Tools";
+import { Explore } from "@/components/Explore";
 import { CreatePost } from "@/components/CreatePost";
 import { Profile } from "@/components/Profile";
+import { Search } from "@/components/Search";
 import { Header } from "@/components/Header";
 
-type ActiveTab = 'home' | 'communities' | 'tools' | 'create' | 'profile';
+type ActiveTab = 'home' | 'communities' | 'search' | 'explore' | 'create' | 'profile';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -19,8 +20,10 @@ const Index = () => {
         return <Feed />;
       case 'communities':
         return <Communities />;
-      case 'tools':
-        return <Tools />;
+      case 'search':
+        return <Search />;
+      case 'explore':
+        return <Explore />;
       case 'create':
         return <CreatePost />;
       case 'profile':
