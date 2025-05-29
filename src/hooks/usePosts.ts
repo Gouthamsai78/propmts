@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,23 +6,45 @@ export const usePosts = () => {
   return useQuery({
     queryKey: ['posts'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, fetch all posts
+      const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          users (
-            username,
-            avatar_url,
-            display_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching posts:', error);
-        throw error;
+      if (postsError) {
+        console.error('Error fetching posts:', postsError);
+        throw postsError;
       }
-      return data || [];
+
+      if (!posts || posts.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs from posts
+      const userIds = [...new Set(posts.map(post => post.user_id))];
+      
+      // Fetch user data for all unique user IDs
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, username, avatar_url, display_name')
+        .in('id', userIds);
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw usersError;
+      }
+
+      // Create a map of users by ID for quick lookup
+      const usersMap = new Map(users?.map(user => [user.id, user]) || []);
+
+      // Combine posts with user data
+      const postsWithUsers = posts.map(post => ({
+        ...post,
+        users: usersMap.get(post.user_id) || null
+      }));
+
+      return postsWithUsers;
     },
   });
 };
