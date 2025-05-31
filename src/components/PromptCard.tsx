@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal, UserPlus } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
@@ -40,12 +40,23 @@ export const PromptCard = ({
   onAuthorClick,
   showFollowButton = true 
 }: PromptCardProps) => {
+  // Use state that syncs with props for real-time updates
+  const [currentLikes, setCurrentLikes] = useState(post.likes);
+  const [currentComments, setCurrentComments] = useState(post.comments);
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Update state when props change (for real-time updates)
+  useEffect(() => {
+    setCurrentLikes(post.likes);
+    setCurrentComments(post.comments);
+    setIsLiked(post.isLiked || false);
+    setIsSaved(post.isSaved || false);
+  }, [post.likes, post.comments, post.isLiked, post.isSaved]);
 
   const handleLike = () => {
     if (!user) {
@@ -57,7 +68,10 @@ export const PromptCard = ({
       return;
     }
     
-    setIsLiked(!isLiked);
+    // Optimistic UI update
+    const newIsLiked = !isLiked;
+    setIsLiked(newIsLiked);
+    setCurrentLikes(prev => newIsLiked ? prev + 1 : Math.max(0, prev - 1));
     onLike();
   };
 
@@ -207,14 +221,14 @@ export const PromptCard = ({
                 className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
               >
                 <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-                <span className="text-sm font-medium text-gray-700">{post.likes}</span>
+                <span className="text-sm font-medium text-gray-700">{currentLikes}</span>
               </button>
               <button 
                 onClick={handleComments}
                 className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
               >
                 <MessageCircle className="w-5 h-5 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">{post.comments}</span>
+                <span className="text-sm font-medium text-gray-700">{currentComments}</span>
               </button>
             </div>
             <button

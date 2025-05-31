@@ -1,9 +1,63 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
 
 export const usePosts = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  // Set up real-time subscription for posts table
+  useEffect(() => {
+    const postsChannel = supabase
+      .channel('posts-channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'posts',
+      }, (payload) => {
+        console.log('Real-time update received:', payload);
+        // Invalidate and refetch posts query to update UI
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+      })
+      .subscribe();
+
+    // Set up real-time subscription for reactions table
+    const reactionsChannel = supabase
+      .channel('reactions-channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reactions',
+      }, (payload) => {
+        console.log('Real-time reaction update received:', payload);
+        // Invalidate and refetch posts query to update UI
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+      })
+      .subscribe();
+
+    // Set up real-time subscription for saved_posts table
+    const savedPostsChannel = supabase
+      .channel('saved-posts-channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'saved_posts',
+      }, (payload) => {
+        console.log('Real-time saved post update received:', payload);
+        // Invalidate and refetch posts and savedPosts queries to update UI
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+      })
+      .subscribe();
+
+    // Update the cleanup function to remove the saved_posts channel
+    return () => {
+      supabase.removeChannel(postsChannel);
+      supabase.removeChannel(reactionsChannel);
+      supabase.removeChannel(savedPostsChannel);
+    };
+  }, [queryClient]);
   
   return useQuery({
     queryKey: ['posts', user?.id],
@@ -161,32 +215,67 @@ export const useLikePost = () => {
       
       console.log('Toggling like for post:', postId);
       
-      // Check if user already liked the post
-      const { data: existingLike } = await supabase
+      // Check if user already liked the post - use maybeSingle instead of single to avoid 406 errors
+      const { data: existingLike, error: fetchError } = await supabase
         .from('reactions')
         .select('id')
         .eq('post_id', postId)
         .eq('user_id', user.id)
         .eq('reaction_type', 'like')
-        .single();
+        .maybeSingle();
+      
+      if (fetchError) {
+        console.error('Error checking like status:', fetchError);
+        throw fetchError;
+      }
 
       if (existingLike) {
         // Unlike the post
-        const { error } = await supabase
+        const { error: deleteError } = await supabase
           .from('reactions')
           .delete()
           .eq('id', existingLike.id);
         
-        if (error) {
-          console.error('Error unliking post:', error);
-          throw error;
+        if (deleteError) {
+          console.error('Error unliking post:', deleteError);
+          throw deleteError;
+        }
+        
+        // Decrement likes_count in posts table using raw SQL for atomic update
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ likes_count: supabase.raw('GREATEST(likes_count - 1, 0)') })
+          .eq('id', postId);
+        
+        if (updateError) {
+          console.error('Error updating post likes count:', updateError);
+          // Try again with a different approach if the first one fails
+          try {
+            // Get current count and update
+            const { data: postData } = await supabase
+              .from('posts')
+              .select('likes_count')
+              .eq('id', postId)
+              .maybeSingle();
+            
+            if (postData) {
+              const currentLikes = postData.likes_count || 0;
+              await supabase
+                .from('posts')
+                .update({ likes_count: Math.max(0, currentLikes - 1) })
+                .eq('id', postId);
+            }
+          } catch (fallbackError) {
+            console.error('Fallback update also failed:', fallbackError);
+            // Continue even if update fails to maintain user experience
+          }
         }
         
         console.log('Post unliked');
         return { action: 'unliked' };
       } else {
         // Like the post
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('reactions')
           .insert({
             post_id: postId,
@@ -194,9 +283,39 @@ export const useLikePost = () => {
             reaction_type: 'like'
           });
         
-        if (error) {
-          console.error('Error liking post:', error);
-          throw error;
+        if (insertError) {
+          console.error('Error liking post:', insertError);
+          throw insertError;
+        }
+        
+        // Increment likes_count in posts table using raw SQL for atomic update
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ likes_count: supabase.raw('likes_count + 1') })
+          .eq('id', postId);
+        
+        if (updateError) {
+          console.error('Error updating post likes count:', updateError);
+          // Try again with a different approach if the first one fails
+          try {
+            // Get current count and update
+            const { data: postData } = await supabase
+              .from('posts')
+              .select('likes_count')
+              .eq('id', postId)
+              .maybeSingle();
+            
+            if (postData) {
+              const currentLikes = postData.likes_count || 0;
+              await supabase
+                .from('posts')
+                .update({ likes_count: currentLikes + 1 })
+                .eq('id', postId);
+            }
+          } catch (fallbackError) {
+            console.error('Fallback update also failed:', fallbackError);
+            // Continue even if update fails to maintain user experience
+          }
         }
         
         console.log('Post liked');
@@ -204,8 +323,13 @@ export const useLikePost = () => {
       }
     },
     onSuccess: (_, postId) => {
+      // Invalidate all related queries to ensure UI updates correctly
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      
+      // Force a refetch to ensure the latest data
+      queryClient.refetchQueries({ queryKey: ['posts'] });
     },
   });
 };
@@ -226,7 +350,7 @@ export const useSavePost = () => {
         .select('id')
         .eq('post_id', postId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existingSave) {
         // Unsave the post
