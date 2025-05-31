@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Camera, X, Upload, Image, Video, ChevronLeft, ChevronRight } from "lucide-react";
+import { Camera, X, Upload, Image, Video } from "lucide-react";
 import { useCreatePost } from "@/hooks/usePosts";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { useToast } from "@/hooks/use-toast";
@@ -12,8 +12,7 @@ export const CreatePost = () => {
   const [prompt, setPrompt] = useState("");
   const [category, setCategory] = useState("");
   const [allowCopy, setAllowCopy] = useState(true);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { user } = useAuth();
@@ -35,52 +34,44 @@ export const CreatePost = () => {
   ];
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    // Process each file
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: `File ${file.name} is larger than 10MB and was skipped.`,
-          variant: "destructive",
-        });
-        continue;
-      }
-
-      // Check file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/mov', 'video/avi'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: `File ${file.name} is not a supported format and was skipped.`,
-          variant: "destructive",
-        });
-        continue;
-      }
-
-      try {
-        const url = await uploadFile(file);
-        if (url) {
-          setImageUrls(prev => [...prev, url]);
-        }
-      } catch (error) {
-        toast({
-          title: "Upload failed",
-          description: `Failed to upload ${file.name}. Please try again.`,
-          variant: "destructive",
-        });
-      }
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    if (files.length > 0) {
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/mov', 'video/avi'];
+    if (!allowedTypes.includes(file.type)) {
       toast({
-        title: "Files uploaded!",
-        description: `Successfully uploaded ${files.length} file(s).`,
+        title: "Invalid file type",
+        description: "Please select an image (JPEG, PNG, GIF, WebP) or video (MP4, MOV, AVI).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const url = await uploadFile(file);
+      if (url) {
+        setImageUrl(url);
+        toast({
+          title: "File uploaded!",
+          description: "Your file has been uploaded successfully.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -115,7 +106,7 @@ export const CreatePost = () => {
         prompt: prompt.trim() || null,
         category: category || null,
         allow_copy: allowCopy,
-        image_url: imageUrls.length > 0 ? JSON.stringify(imageUrls) : null,
+        image_url: imageUrl.trim() || null,
       });
 
       // Reset form
@@ -124,8 +115,7 @@ export const CreatePost = () => {
       setPrompt("");
       setCategory("");
       setAllowCopy(true);
-      setImageUrls([]);
-      setCurrentImageIndex(0);
+      setImageUrl("");
 
       toast({
         title: "Post created!",
@@ -143,26 +133,11 @@ export const CreatePost = () => {
     }
   };
 
-  const removeImage = (index: number) => {
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
-    if (currentImageIndex >= imageUrls.length - 1) {
-      setCurrentImageIndex(Math.max(0, imageUrls.length - 2));
-    }
+  const removeImage = () => {
+    setImageUrl("");
   };
 
-  const nextImage = () => {
-    if (imageUrls.length > 1 && currentImageIndex < imageUrls.length - 1) {
-      setCurrentImageIndex(prev => prev + 1);
-    }
-  };
-
-  const prevImage = () => {
-    if (imageUrls.length > 1 && currentImageIndex > 0) {
-      setCurrentImageIndex(prev => prev - 1);
-    }
-  };
-
-  const isVideo = (url: string) => url && (url.includes('.mp4') || url.includes('.mov') || url.includes('.avi'));
+  const isVideo = imageUrl && (imageUrl.includes('.mp4') || imageUrl.includes('.mov') || imageUrl.includes('.avi'));
 
   return (
     <div className="max-w-md mx-auto px-4 py-6">
@@ -249,7 +224,6 @@ export const CreatePost = () => {
                   onChange={handleFileUpload}
                   className="hidden"
                   disabled={uploading}
-                  multiple
                 />
                 <div className="flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                   {uploading ? (
@@ -260,7 +234,7 @@ export const CreatePost = () => {
                   ) : (
                     <div className="flex items-center space-x-2">
                       <Upload className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-600">Upload Images/Videos</span>
+                      <span className="text-sm text-gray-600">Upload Image/Video</span>
                     </div>
                   )}
                 </div>
@@ -271,64 +245,31 @@ export const CreatePost = () => {
             </p>
           </div>
 
-          {/* Image/Video Carousel */}
-          {imageUrls.length > 0 && (
+          {/* Image/Video Preview */}
+          {imageUrl && (
             <div className="relative">
-              {isVideo(imageUrls[currentImageIndex]) ? (
+              {isVideo ? (
                 <video
-                  src={imageUrls[currentImageIndex]}
+                  src={imageUrl}
                   controls
                   className="w-full h-48 object-cover rounded-lg"
-                  onError={() => removeImage(currentImageIndex)}
+                  onError={() => setImageUrl("")}
                 />
               ) : (
                 <img
-                  src={imageUrls[currentImageIndex]}
+                  src={imageUrl}
                   alt="Preview"
                   className="w-full h-48 object-cover rounded-lg"
-                  onError={() => removeImage(currentImageIndex)}
+                  onError={() => setImageUrl("")}
                 />
               )}
-              
-              {/* Navigation arrows */}
-              {imageUrls.length > 1 && (
-                <div className="absolute inset-0 flex items-center justify-between px-2">
-                  <button
-                    type="button"
-                    onClick={prevImage}
-                    disabled={currentImageIndex === 0}
-                    className={`bg-black bg-opacity-50 text-white p-1 rounded-full ${currentImageIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-opacity-70'}`}
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={nextImage}
-                    disabled={currentImageIndex === imageUrls.length - 1}
-                    className={`bg-black bg-opacity-50 text-white p-1 rounded-full ${currentImageIndex === imageUrls.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-opacity-70'}`}
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-              
-              {/* Remove button */}
               <button
                 type="button"
-                onClick={() => removeImage(currentImageIndex)}
+                onClick={removeImage}
                 className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
               >
                 <X className="w-4 h-4" />
               </button>
-              
-              {/* Image counter */}
-              {imageUrls.length > 1 && (
-                <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-                  <div className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
-                    {currentImageIndex + 1} / {imageUrls.length}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
