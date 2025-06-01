@@ -4,23 +4,25 @@ import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal, UserPlus } from "
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import { Comments } from "./Comments";
+import { MediaCarousel } from "./MediaCarousel";
 
 interface Post {
   id: string;
   title: string;
-  description: string;
+  content: string;
   prompt: string;
-  tags: string[];
+  category: string;
   author: string;
   authorAvatar: string;
   authorId?: string;
-  likes: number;
-  comments: number;
-  image?: string;
-  allowCopy: boolean;
+  likes_count: number;
+  comments_count: number;
+  image_url?: string;
+  media_urls?: string[];
+  allow_copy: boolean;
   timestamp: string;
-  isLiked?: boolean;
-  isSaved?: boolean;
+  isLikedByUser?: boolean;
+  isSavedByUser?: boolean;
 }
 
 interface PromptCardProps {
@@ -40,8 +42,8 @@ export const PromptCard = ({
   onAuthorClick,
   showFollowButton = true 
 }: PromptCardProps) => {
-  const [isLiked, setIsLiked] = useState(post.isLiked || false);
-  const [isSaved, setIsSaved] = useState(post.isSaved || false);
+  const [isLiked, setIsLiked] = useState(post.isLikedByUser || false);
+  const [isSaved, setIsSaved] = useState(post.isSavedByUser || false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const { user } = useAuth();
@@ -93,6 +95,9 @@ export const PromptCard = ({
     setShowComments(true);
   };
 
+  // Get media URLs for carousel
+  const mediaUrls = post.media_urls || (post.image_url ? [post.image_url] : []);
+
   return (
     <>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -128,15 +133,11 @@ export const PromptCard = ({
           </div>
         </div>
 
-        {/* Image */}
-        {post.image && (
+        {/* Media Carousel */}
+        {mediaUrls.length > 0 && (
           <div className="relative">
-            <img
-              src={post.image}
-              alt={post.title}
-              className="w-full h-64 object-cover"
-            />
-            {post.allowCopy && post.prompt && (
+            <MediaCarousel mediaUrls={mediaUrls} />
+            {post.allow_copy && post.prompt && (
               <button
                 onClick={onCopyPrompt}
                 className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white p-2 rounded-full hover:bg-black/70 transition-all duration-200"
@@ -150,21 +151,16 @@ export const PromptCard = ({
         {/* Content */}
         <div className="p-4">
           <h3 className="font-bold text-lg text-gray-800 mb-2">{post.title}</h3>
-          {post.description && (
-            <p className="text-gray-600 mb-3">{post.description}</p>
+          {post.content && (
+            <p className="text-gray-600 mb-3">{post.content}</p>
           )}
 
-          {/* Tags */}
-          {post.tags.length > 0 && (
+          {/* Category */}
+          {post.category && (
             <div className="flex flex-wrap gap-2 mb-3">
-              {post.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium"
-                >
-                  #{tag}
-                </span>
-              ))}
+              <span className="bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                #{post.category}
+              </span>
             </div>
           )}
 
@@ -173,7 +169,7 @@ export const PromptCard = ({
             <div className="bg-gray-50 rounded-xl p-4 mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">Prompt</span>
-                {post.allowCopy && (
+                {post.allow_copy && (
                   <button
                     onClick={onCopyPrompt}
                     className="flex items-center space-x-1 text-sm text-purple-600 hover:text-purple-700 font-medium"
@@ -207,14 +203,14 @@ export const PromptCard = ({
                 className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
               >
                 <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-                <span className="text-sm font-medium text-gray-700">{post.likes}</span>
+                <span className="text-sm font-medium text-gray-700">{post.likes_count || 0}</span>
               </button>
               <button 
                 onClick={handleComments}
                 className="flex items-center space-x-2 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
               >
                 <MessageCircle className="w-5 h-5 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">{post.comments}</span>
+                <span className="text-sm font-medium text-gray-700">{post.comments_count || 0}</span>
               </button>
             </div>
             <button
