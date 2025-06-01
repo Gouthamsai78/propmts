@@ -5,7 +5,11 @@ import { PromptCard } from "./PromptCard";
 import { CreatePost } from "./CreatePost";
 import { useToast } from "@/hooks/use-toast";
 
-export const Feed = () => {
+interface FeedProps {
+  onUserClick?: (userId: string) => void;
+}
+
+export const Feed = ({ onUserClick }: FeedProps) => {
   const { data: posts, isLoading, error } = usePosts();
   const likePostMutation = useLikePost();
   const savePostMutation = useSavePost();
@@ -96,6 +100,7 @@ export const Feed = () => {
             onCopyPrompt={() => handleCopyPrompt(post.prompt || "")}
             onLike={() => handleLikePost(post.id)}
             onSave={() => handleSavePost(post.id)}
+            onAuthorClick={onUserClick}
           />
         ))
       ) : (
