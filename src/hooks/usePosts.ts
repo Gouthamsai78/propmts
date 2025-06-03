@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -103,7 +102,9 @@ export const usePosts = () => {
       console.log('Posts with data:', postsWithData.length);
       return postsWithData;
     },
-    refetchInterval: 5000, // Refetch every 5 seconds to get latest counts
+    refetchInterval: 3000, // Reduced to 3 seconds for more frequent updates
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchOnMount: true, // Always refetch when component mounts
   });
 };
 
