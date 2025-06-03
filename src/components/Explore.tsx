@@ -35,6 +35,20 @@ export const Explore = ({ onUserClick }: ExploreProps) => {
     return postCategories.includes(selectedCategory.toLowerCase());
   }) || [];
 
+  // Helper function to parse media URLs
+  const parseMediaUrls = (imageUrl: string | null): string[] => {
+    if (!imageUrl) return [];
+    
+    try {
+      // Try to parse as JSON array first
+      const parsed = JSON.parse(imageUrl);
+      return Array.isArray(parsed) ? parsed : [imageUrl];
+    } catch {
+      // If parsing fails, treat as single URL
+      return [imageUrl];
+    }
+  };
+
   const handleCopyPrompt = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
     toast({
@@ -135,7 +149,7 @@ export const Explore = ({ onUserClick }: ExploreProps) => {
                 likes_count: post.likes_count || 0,
                 comments_count: post.comments_count || 0,
                 image_url: post.image_url,
-                media_urls: post.image_url ? [post.image_url] : [],
+                media_urls: parseMediaUrls(post.image_url),
                 allow_copy: post.allow_copy ?? true,
                 timestamp: new Date(post.created_at).toLocaleDateString('en-US', {
                   hour: 'numeric',

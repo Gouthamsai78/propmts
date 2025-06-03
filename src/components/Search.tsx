@@ -36,6 +36,20 @@ export const Search = ({ onUserClick }: SearchProps) => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Helper function to parse media URLs
+  const parseMediaUrls = (imageUrl: string | null): string[] => {
+    if (!imageUrl) return [];
+    
+    try {
+      // Try to parse as JSON array first
+      const parsed = JSON.parse(imageUrl);
+      return Array.isArray(parsed) ? parsed : [imageUrl];
+    } catch {
+      // If parsing fails, treat as single URL
+      return [imageUrl];
+    }
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim() && user) {
@@ -136,7 +150,7 @@ export const Search = ({ onUserClick }: SearchProps) => {
                 likes_count: post.likes_count || 0,
                 comments_count: post.comments_count || 0,
                 image_url: post.image_url,
-                media_urls: post.image_url ? [post.image_url] : [],
+                media_urls: parseMediaUrls(post.image_url),
                 allow_copy: post.allow_copy ?? true,
                 timestamp: new Date(post.created_at).toLocaleDateString('en-US', {
                   hour: 'numeric',
