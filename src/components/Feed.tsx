@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { usePosts, useLikePost, useSavePost } from "@/hooks/usePosts";
 import { PromptCard } from "./PromptCard";
-import { CreatePost } from "./CreatePost";
 import { useToast } from "@/hooks/use-toast";
 
 interface FeedProps {
@@ -81,7 +80,10 @@ export const Feed = ({ onUserClick }: FeedProps) => {
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <CreatePost />
+      <div className="text-center py-4">
+        <h2 className="text-2xl font-bold text-gray-800 mb-1">Home Feed</h2>
+        <p className="text-gray-600">Latest posts from the community</p>
+      </div>
       
       {posts && posts.length > 0 ? (
         posts.map((post) => (
