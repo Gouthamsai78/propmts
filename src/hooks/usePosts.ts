@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +7,7 @@ export const usePosts = () => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['posts', user?.id],
+    queryKey: ['posts'],
     queryFn: async () => {
       console.log('Fetching posts...');
       
@@ -102,6 +103,7 @@ export const usePosts = () => {
       console.log('Posts with data:', postsWithData.length);
       return postsWithData;
     },
+    refetchInterval: 5000, // Refetch every 5 seconds to get latest counts
   });
 };
 
@@ -117,6 +119,7 @@ export const useCreatePost = () => {
       category?: string | null;
       allow_copy?: boolean;
       image_url?: string | null;
+      post_type?: string;
     }) => {
       if (!user) throw new Error('User must be logged in');
       
@@ -203,9 +206,11 @@ export const useLikePost = () => {
         return { action: 'liked' };
       }
     },
-    onSuccess: (_, postId) => {
+    onSuccess: () => {
+      // Invalidate all posts queries to refresh counts for all users
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
     },
   });
 };
@@ -260,7 +265,7 @@ export const useSavePost = () => {
         return { action: 'saved' };
       }
     },
-    onSuccess: (_, postId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
