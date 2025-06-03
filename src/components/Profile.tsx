@@ -188,16 +188,17 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
               post={{
                 id: post.id,
                 title: post.title,
-                description: post.content || '',
+                content: post.content || '',
                 prompt: post.prompt || '',
-                tags: post.category ? post.category.split(',').map(tag => tag.trim()) : [],
+                category: post.category || '',
                 author: (post.users as any)?.display_name || (post.users as any)?.username || 'Unknown',
                 authorAvatar: (post.users as any)?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${(post.users as any)?.username || 'unknown'}`,
                 authorId: post.user_id,
-                likes: post.likes_count || 0,
-                comments: post.comments_count || 0,
-                image: post.image_url,
-                allowCopy: post.allow_copy ?? true,
+                likes_count: post.likes_count || 0,
+                comments_count: post.comments_count || 0,
+                image_url: post.image_url,
+                media_urls: post.image_url ? [post.image_url] : [],
+                allow_copy: post.allow_copy ?? true,
                 timestamp: new Date(post.created_at).toLocaleDateString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
@@ -205,8 +206,8 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
                   month: 'short',
                   day: 'numeric'
                 }),
-                isLiked: (post as any).isLikedByUser || false,
-                isSaved: (post as any).isSavedByUser || false
+                isLikedByUser: (post as any).isLikedByUser || false,
+                isSavedByUser: (post as any).isSavedByUser || false
               }}
               onCopyPrompt={() => handleCopyPrompt(post.prompt || '')}
               onLike={() => handleLike(post.id)}
