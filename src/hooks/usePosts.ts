@@ -6,7 +6,7 @@ export const usePosts = () => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['posts'],
+    queryKey: ['posts', user?.id],
     queryFn: async () => {
       console.log('Fetching posts...');
       
@@ -102,9 +102,6 @@ export const usePosts = () => {
       console.log('Posts with data:', postsWithData.length);
       return postsWithData;
     },
-    refetchInterval: 3000, // Reduced to 3 seconds for more frequent updates
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-    refetchOnMount: true, // Always refetch when component mounts
   });
 };
 
@@ -120,7 +117,6 @@ export const useCreatePost = () => {
       category?: string | null;
       allow_copy?: boolean;
       image_url?: string | null;
-      post_type?: string;
     }) => {
       if (!user) throw new Error('User must be logged in');
       
@@ -207,11 +203,9 @@ export const useLikePost = () => {
         return { action: 'liked' };
       }
     },
-    onSuccess: () => {
-      // Invalidate all posts queries to refresh counts for all users
+    onSuccess: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
     },
   });
 };
@@ -266,7 +260,7 @@ export const useSavePost = () => {
         return { action: 'saved' };
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });

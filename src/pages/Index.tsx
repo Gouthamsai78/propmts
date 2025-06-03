@@ -30,7 +30,6 @@ const Index = () => {
   };
 
   const renderContent = () => {
-    console.log('Rendering content for activeTab:', activeTab);
     switch (activeTab) {
       case 'home':
         return <Feed onUserClick={handleUserClick} />;
@@ -41,7 +40,6 @@ const Index = () => {
       case 'explore':
         return <Explore onUserClick={handleUserClick} />;
       case 'create':
-        console.log('Rendering CreatePost component');
         return <CreatePost />;
       case 'profile':
         return <Profile userId={viewingUserId} onUserClick={handleUserClick} />;
