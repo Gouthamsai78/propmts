@@ -1,11 +1,15 @@
 
 import { useState } from "react";
-import { Camera, X, Upload, Image, Video } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Camera, Video, X, FileText, Wrench } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useCreatePost } from "@/hooks/usePosts";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { MediaCarousel } from "./MediaCarousel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const CreatePost = () => {
   const [title, setTitle] = useState("");
@@ -13,92 +17,57 @@ export const CreatePost = () => {
   const [prompt, setPrompt] = useState("");
   const [category, setCategory] = useState("");
   const [allowCopy, setAllowCopy] = useState(true);
-  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [postType, setPostType] = useState<"prompt" | "tool">("prompt");
   
-  const { user } = useAuth();
-  const { toast } = useToast();
+  // Tool-specific fields
+  const [toolUrl, setToolUrl] = useState("");
+  const [toolDescription, setToolDescription] = useState("");
+  
+  const { uploadMultipleFiles, uploading: uploadingFiles } = useFileUpload();
   const createPostMutation = useCreatePost();
-  const { uploadMultipleFiles, uploading } = useFileUpload();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const categories = [
-    "chatgpt",
-    "midjourney",
-    "coding", 
-    "creative",
-    "writing",
-    "productivity",
-    "design",
-    "photography",
-    "business",
-    "education"
-  ];
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    // Check total file count
-    if (mediaUrls.length + files.length > 5) {
-      toast({
-        title: "Too many files",
-        description: "You can upload a maximum of 5 media files per post.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check file sizes and types
-    const invalidFiles = files.filter(file => {
-      if (file.size > 50 * 1024 * 1024) return true; // 50MB limit
-      const allowedTypes = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'video/mp4', 'video/mov', 'video/avi', 'video/webm'
-      ];
-      return !allowedTypes.includes(file.type);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    
+    const validFiles = files.filter(file => {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB limit
+      
+      if (!isImage && !isVideo) {
+        toast({
+          title: "Invalid file type",
+          description: "Only images and videos are allowed.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (!isValidSize) {
+        toast({
+          title: "File too large",
+          description: "File size must be less than 50MB.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return true;
     });
-
-    if (invalidFiles.length > 0) {
-      toast({
-        title: "Invalid files",
-        description: "Please select images (JPEG, PNG, GIF, WebP) or videos (MP4, MOV, AVI, WebM) under 50MB each.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const urls = await uploadMultipleFiles(files);
-      setMediaUrls(prev => [...prev, ...urls]);
-      toast({
-        title: "Files uploaded!",
-        description: `${files.length} file(s) uploaded successfully.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload files. Please try again.",
-        variant: "destructive",
-      });
-    }
+    
+    setSelectedFiles(prev => [...prev, ...validFiles]);
   };
 
-  const handleRemoveMedia = (index: number) => {
-    setMediaUrls(prev => prev.filter((_, i) => i !== index));
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to create a post.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!title.trim()) {
       toast({
         title: "Title required",
@@ -108,16 +77,58 @@ export const CreatePost = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    if (postType === "prompt" && !prompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please enter a prompt for your post.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (postType === "tool" && !toolUrl.trim()) {
+      toast({
+        title: "Tool URL required",
+        description: "Please enter a URL for the AI tool.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      await createPostMutation.mutateAsync({
-        title: title.trim(),
-        content: content.trim() || null,
-        prompt: prompt.trim() || null,
-        category: category || null,
-        allow_copy: allowCopy,
-        image_url: mediaUrls.length > 0 ? JSON.stringify(mediaUrls) : null,
+      let mediaUrls: string[] = [];
+      
+      if (selectedFiles.length > 0) {
+        mediaUrls = await uploadMultipleFiles(selectedFiles);
+      }
+
+      let postData;
+      
+      if (postType === "prompt") {
+        postData = {
+          title,
+          content,
+          prompt,
+          category,
+          allow_copy: allowCopy,
+          image_url: mediaUrls.length > 0 ? JSON.stringify(mediaUrls) : null,
+        };
+      } else {
+        postData = {
+          title,
+          content: toolDescription,
+          prompt: toolUrl, // Store tool URL in prompt field for now
+          category: `tool,${category}`,
+          allow_copy: false, // Tools don't need copy functionality
+          image_url: mediaUrls.length > 0 ? JSON.stringify(mediaUrls) : null,
+        };
+      }
+
+      await createPostMutation.mutateAsync(postData);
+      
+      toast({
+        title: "Success!",
+        description: `Your ${postType} post has been created.`,
       });
 
       // Reset form
@@ -126,164 +137,200 @@ export const CreatePost = () => {
       setPrompt("");
       setCategory("");
       setAllowCopy(true);
-      setMediaUrls([]);
-
-      toast({
-        title: "Post created!",
-        description: "Your post has been shared successfully.",
-      });
+      setSelectedFiles([]);
+      setToolUrl("");
+      setToolDescription("");
+      
+      // Navigate back to home
+      navigate("/");
     } catch (error) {
-      console.error('Create post error:', error);
+      console.error("Error creating post:", error);
       toast({
         title: "Error",
-        description: "Unable to create post. Please try again.",
+        description: "Failed to create post. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
+  const isLoading = createPostMutation.isPending || uploadingFiles;
+
   return (
-    <div className="max-w-md mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Post</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Post</h2>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
+        <Tabs value={postType} onValueChange={(value) => setPostType(value as "prompt" | "tool")} className="mb-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="prompt" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Prompt Post
+            </TabsTrigger>
+            <TabsTrigger value="tool" className="flex items-center gap-2">
+              <Wrench className="w-4 h-4" />
+              AI Tool Post
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-              Title *
-            </label>
-            <input
-              type="text"
+            <Label htmlFor="title">Title *</Label>
+            <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter your post title..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder={postType === "prompt" ? "Enter your prompt title..." : "Enter the AI tool name..."}
+              className="mt-1"
               required
             />
           </div>
 
-          {/* Category */}
+          <TabsContent value="prompt" className="space-y-6 mt-0">
+            <div>
+              <Label htmlFor="prompt">Prompt *</Label>
+              <Textarea
+                id="prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Enter your AI prompt here..."
+                className="mt-1 min-h-[120px]"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="content">Description (Optional)</Label>
+              <Textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Describe how to use this prompt or what it's for..."
+                className="mt-1"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="allowCopy"
+                checked={allowCopy}
+                onChange={(e) => setAllowCopy(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="allowCopy" className="text-sm">
+                Allow others to copy this prompt
+              </Label>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="tool" className="space-y-6 mt-0">
+            <div>
+              <Label htmlFor="toolUrl">Tool URL *</Label>
+              <Input
+                id="toolUrl"
+                type="url"
+                value={toolUrl}
+                onChange={(e) => setToolUrl(e.target.value)}
+                placeholder="https://example.com/ai-tool"
+                className="mt-1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="toolDescription">Description *</Label>
+              <Textarea
+                id="toolDescription"
+                value={toolDescription}
+                onChange={(e) => setToolDescription(e.target.value)}
+                placeholder="Describe what this AI tool does and how it can be useful..."
+                className="mt-1 min-h-[120px]"
+                required
+              />
+            </div>
+          </TabsContent>
+
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-              Category
-            </label>
-            <select
+            <Label htmlFor="category">Category (Optional)</Label>
+            <Input
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="">Select a category...</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Content */}
-          <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Describe your post..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+              placeholder={postType === "prompt" ? "e.g., chatgpt, midjourney, coding" : "e.g., text generation, image creation, productivity"}
+              className="mt-1"
             />
           </div>
 
-          {/* Prompt */}
+          {/* Media Upload */}
           <div>
-            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-              AI Prompt
-            </label>
-            <textarea
-              id="prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter your AI prompt here..."
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-            />
-          </div>
-
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Media Upload ({mediaUrls.length}/5)
-            </label>
-            <label className="cursor-pointer block">
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileUpload}
-                className="hidden"
-                disabled={uploading || mediaUrls.length >= 5}
-                multiple
-              />
-              <div className="flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                {uploading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-sm text-gray-600">Uploading...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Upload className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm text-gray-600">
-                      {mediaUrls.length >= 5 ? 'Max files reached' : 'Upload Images/Videos'}
-                    </span>
-                  </div>
-                )}
+            <Label>Media (Optional)</Label>
+            <div className="mt-2 space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  id="media-upload"
+                  multiple
+                  accept="image/*,video/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('media-upload')?.click()}
+                  className="flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  Add Images
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('media-upload')?.click()}
+                  className="flex items-center gap-2"
+                >
+                  <Video className="w-4 h-4" />
+                  Add Videos
+                </Button>
               </div>
-            </label>
-            <p className="text-xs text-gray-500 mt-1">
-              Supports: JPEG, PNG, GIF, WebP, MP4, MOV, AVI, WebM (max 50MB each, 5 files total)
-            </p>
-          </div>
 
-          {/* Media Preview */}
-          {mediaUrls.length > 0 && (
-            <div>
-              <MediaCarousel 
-                mediaUrls={mediaUrls} 
-                onRemove={handleRemoveMedia}
-                editable={true}
-              />
+              {selectedFiles.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="relative">
+                      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <Video className="w-8 h-8 text-gray-400" />
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Allow Copy */}
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="allowCopy"
-              checked={allowCopy}
-              onChange={(e) => setAllowCopy(e.target.checked)}
-              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-            />
-            <label htmlFor="allowCopy" className="text-sm text-gray-700">
-              Allow others to copy this prompt
-            </label>
           </div>
 
-          {/* Submit Button */}
-          <button
+          <Button
             type="submit"
-            disabled={isSubmitting || !title.trim() || uploading}
-            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+            disabled={isLoading}
           >
-            {isSubmitting ? "Creating..." : uploading ? "Uploading..." : "Share Post"}
-          </button>
+            {isLoading ? "Creating..." : `Create ${postType === "prompt" ? "Prompt" : "Tool"} Post`}
+          </Button>
         </form>
       </div>
     </div>
