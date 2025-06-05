@@ -15,6 +15,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [viewingUserId, setViewingUserId] = useState<string | undefined>();
 
+  console.log('Index component rendered, activeTab:', activeTab);
+
   const handleProfileClick = () => {
     setViewingUserId(undefined);
     setActiveTab('profile');
@@ -33,19 +35,25 @@ const Index = () => {
     console.log('Rendering content for activeTab:', activeTab);
     switch (activeTab) {
       case 'home':
+        console.log('Rendering Feed component');
         return <Feed onUserClick={handleUserClick} />;
       case 'communities':
+        console.log('Rendering Communities component');
         return <Communities />;
       case 'search':
+        console.log('Rendering Search component');
         return <Search onUserClick={handleUserClick} />;
       case 'explore':
+        console.log('Rendering Explore component');
         return <Explore onUserClick={handleUserClick} />;
       case 'create':
         console.log('Rendering CreatePost component');
         return <CreatePost />;
       case 'profile':
+        console.log('Rendering Profile component');
         return <Profile userId={viewingUserId} onUserClick={handleUserClick} />;
       default:
+        console.log('Rendering default Feed component');
         return <Feed onUserClick={handleUserClick} />;
     }
   };
