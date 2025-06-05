@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -99,7 +100,7 @@ export const usePosts = () => {
         };
       });
 
-      console.log('Posts with data:', postsWithData.length);
+      console.log('Posts with data and counts:', postsWithData.map(p => ({ id: p.id, likes: p.likes_count, comments: p.comments_count })));
       return postsWithData;
     },
     refetchInterval: 3000, // Reduced to 3 seconds for more frequent updates
@@ -174,6 +175,8 @@ export const useLikePost = () => {
         .eq('reaction_type', 'like')
         .single();
 
+      console.log('Existing like found:', existingLike);
+
       if (existingLike) {
         // Unlike the post
         const { error } = await supabase
@@ -186,7 +189,16 @@ export const useLikePost = () => {
           throw error;
         }
         
-        console.log('Post unliked');
+        console.log('Post unliked, checking updated count...');
+        
+        // Fetch updated post to verify count
+        const { data: updatedPost } = await supabase
+          .from('posts')
+          .select('likes_count')
+          .eq('id', postId)
+          .single();
+        
+        console.log('Updated post likes count after unlike:', updatedPost?.likes_count);
         return { action: 'unliked' };
       } else {
         // Like the post
@@ -203,11 +215,21 @@ export const useLikePost = () => {
           throw error;
         }
         
-        console.log('Post liked');
+        console.log('Post liked, checking updated count...');
+        
+        // Fetch updated post to verify count
+        const { data: updatedPost } = await supabase
+          .from('posts')
+          .select('likes_count')
+          .eq('id', postId)
+          .single();
+        
+        console.log('Updated post likes count after like:', updatedPost?.likes_count);
         return { action: 'liked' };
       }
     },
     onSuccess: () => {
+      console.log('Like mutation successful, invalidating queries...');
       // Invalidate all posts queries to refresh counts for all users
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });

@@ -90,9 +90,20 @@ export const useCreateComment = () => {
       }
       
       console.log('Comment created:', data);
+      
+      // Fetch updated post to verify count
+      const { data: updatedPost } = await supabase
+        .from('posts')
+        .select('comments_count')
+        .eq('id', postId)
+        .single();
+      
+      console.log('Updated post comments count after comment:', updatedPost?.comments_count);
+      
       return data;
     },
     onSuccess: (_, variables) => {
+      console.log('Comment mutation successful, invalidating queries...');
       queryClient.invalidateQueries({ queryKey: ['comments', variables.postId] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
