@@ -171,167 +171,167 @@ export const CreatePost = () => {
               AI Tool Post
             </TabsTrigger>
           </TabsList>
-        </Tabs>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={postType === "prompt" ? "Enter your prompt title..." : "Enter the AI tool name..."}
-              className="mt-1"
-              required
-            />
-          </div>
-
-          <TabsContent value="prompt" className="space-y-6 mt-0">
+          <form onSubmit={handleSubmit} className="space-y-6 mt-6">
             <div>
-              <Label htmlFor="prompt">Prompt *</Label>
-              <Textarea
-                id="prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Enter your AI prompt here..."
-                className="mt-1 min-h-[120px]"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="content">Description (Optional)</Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Describe how to use this prompt or what it's for..."
-                className="mt-1"
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="allowCopy"
-                checked={allowCopy}
-                onChange={(e) => setAllowCopy(e.target.checked)}
-                className="rounded"
-              />
-              <Label htmlFor="allowCopy" className="text-sm">
-                Allow others to copy this prompt
-              </Label>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="tool" className="space-y-6 mt-0">
-            <div>
-              <Label htmlFor="toolUrl">Tool URL *</Label>
+              <Label htmlFor="title">Title *</Label>
               <Input
-                id="toolUrl"
-                type="url"
-                value={toolUrl}
-                onChange={(e) => setToolUrl(e.target.value)}
-                placeholder="https://example.com/ai-tool"
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={postType === "prompt" ? "Enter your prompt title..." : "Enter the AI tool name..."}
                 className="mt-1"
                 required
               />
             </div>
 
-            <div>
-              <Label htmlFor="toolDescription">Description *</Label>
-              <Textarea
-                id="toolDescription"
-                value={toolDescription}
-                onChange={(e) => setToolDescription(e.target.value)}
-                placeholder="Describe what this AI tool does and how it can be useful..."
-                className="mt-1 min-h-[120px]"
-                required
-              />
-            </div>
-          </TabsContent>
-
-          <div>
-            <Label htmlFor="category">Category (Optional)</Label>
-            <Input
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder={postType === "prompt" ? "e.g., chatgpt, midjourney, coding" : "e.g., text generation, image creation, productivity"}
-              className="mt-1"
-            />
-          </div>
-
-          {/* Media Upload */}
-          <div>
-            <Label>Media (Optional)</Label>
-            <div className="mt-2 space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="file"
-                  id="media-upload"
-                  multiple
-                  accept="image/*,video/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
+            <TabsContent value="prompt" className="space-y-6 mt-0">
+              <div>
+                <Label htmlFor="prompt">Prompt *</Label>
+                <Textarea
+                  id="prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Enter your AI prompt here..."
+                  className="mt-1 min-h-[120px]"
+                  required
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('media-upload')?.click()}
-                  className="flex items-center gap-2"
-                >
-                  <Camera className="w-4 h-4" />
-                  Add Images
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('media-upload')?.click()}
-                  className="flex items-center gap-2"
-                >
-                  <Video className="w-4 h-4" />
-                  Add Videos
-                </Button>
               </div>
 
-              {selectedFiles.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="relative">
-                      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                        {file.type.startsWith('image/') ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <Video className="w-8 h-8 text-gray-400" />
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+              <div>
+                <Label htmlFor="content">Description (Optional)</Label>
+                <Textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Describe how to use this prompt or what it's for..."
+                  className="mt-1"
+                />
+              </div>
 
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-            disabled={isLoading}
-          >
-            {isLoading ? "Creating..." : `Create ${postType === "prompt" ? "Prompt" : "Tool"} Post`}
-          </Button>
-        </form>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="allowCopy"
+                  checked={allowCopy}
+                  onChange={(e) => setAllowCopy(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="allowCopy" className="text-sm">
+                  Allow others to copy this prompt
+                </Label>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tool" className="space-y-6 mt-0">
+              <div>
+                <Label htmlFor="toolUrl">Tool URL *</Label>
+                <Input
+                  id="toolUrl"
+                  type="url"
+                  value={toolUrl}
+                  onChange={(e) => setToolUrl(e.target.value)}
+                  placeholder="https://example.com/ai-tool"
+                  className="mt-1"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="toolDescription">Description *</Label>
+                <Textarea
+                  id="toolDescription"
+                  value={toolDescription}
+                  onChange={(e) => setToolDescription(e.target.value)}
+                  placeholder="Describe what this AI tool does and how it can be useful..."
+                  className="mt-1 min-h-[120px]"
+                  required
+                />
+              </div>
+            </TabsContent>
+
+            <div>
+              <Label htmlFor="category">Category (Optional)</Label>
+              <Input
+                id="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder={postType === "prompt" ? "e.g., chatgpt, midjourney, coding" : "e.g., text generation, image creation, productivity"}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Media Upload */}
+            <div>
+              <Label>Media (Optional)</Label>
+              <div className="mt-2 space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    id="media-upload"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('media-upload')?.click()}
+                    className="flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Add Images
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('media-upload')?.click()}
+                    className="flex items-center gap-2"
+                  >
+                    <Video className="w-4 h-4" />
+                    Add Videos
+                  </Button>
+                </div>
+
+                {selectedFiles.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                          {file.type.startsWith('image/') ? (
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <Video className="w-8 h-8 text-gray-400" />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating..." : `Create ${postType === "prompt" ? "Prompt" : "Tool"} Post`}
+            </Button>
+          </form>
+        </Tabs>
       </div>
     </div>
   );
