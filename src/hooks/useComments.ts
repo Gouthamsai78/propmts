@@ -7,8 +7,6 @@ export const useComments = (postId: string) => {
   return useQuery({
     queryKey: ['comments', postId],
     queryFn: async () => {
-      console.log('Fetching comments for post:', postId);
-      
       // First fetch comments
       const { data: comments, error: commentsError } = await supabase
         .from('comments')
@@ -20,8 +18,6 @@ export const useComments = (postId: string) => {
         console.error('Error fetching comments:', commentsError);
         throw commentsError;
       }
-      
-      console.log('Comments fetched:', comments?.length || 0);
       
       if (!comments || comments.length === 0) {
         return [];
@@ -58,7 +54,6 @@ export const useComments = (postId: string) => {
         };
       });
 
-      console.log('Comments with user data:', commentsWithUserData.length);
       return commentsWithUserData;
     },
   });
@@ -71,8 +66,6 @@ export const useCreateComment = () => {
   return useMutation({
     mutationFn: async ({ postId, content }: { postId: string; content: string }) => {
       if (!user) throw new Error('User must be logged in');
-      
-      console.log('Creating comment for post:', postId);
       
       const { data, error } = await supabase
         .from('comments')
@@ -89,21 +82,9 @@ export const useCreateComment = () => {
         throw error;
       }
       
-      console.log('Comment created:', data);
-      
-      // Fetch updated post to verify count
-      const { data: updatedPost } = await supabase
-        .from('posts')
-        .select('comments_count')
-        .eq('id', postId)
-        .single();
-      
-      console.log('Updated post comments count after comment:', updatedPost?.comments_count);
-      
       return data;
     },
     onSuccess: (_, variables) => {
-      console.log('Comment mutation successful, invalidating queries...');
       queryClient.invalidateQueries({ queryKey: ['comments', variables.postId] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });

@@ -9,8 +9,6 @@ export const usePosts = () => {
   return useQuery({
     queryKey: ['posts'],
     queryFn: async () => {
-      console.log('Fetching posts...');
-      
       // First fetch all posts
       const { data: posts, error: postsError } = await supabase
         .from('posts')
@@ -23,11 +21,8 @@ export const usePosts = () => {
       }
 
       if (!posts || posts.length === 0) {
-        console.log('No posts found');
         return [];
       }
-
-      console.log('Posts fetched:', posts.length);
 
       // Get unique user IDs from posts
       const userIds = [...new Set(posts.map(post => post.user_id))];
@@ -100,7 +95,6 @@ export const usePosts = () => {
         };
       });
 
-      console.log('Posts with data and counts:', postsWithData.map(p => ({ id: p.id, likes: p.likes_count, comments: p.comments_count })));
       return postsWithData;
     },
     refetchInterval: 3000, // Reduced to 3 seconds for more frequent updates
@@ -146,7 +140,6 @@ export const useCreatePost = () => {
         throw error;
       }
       
-      console.log('Post created:', data);
       return data;
     },
     onSuccess: () => {
@@ -164,8 +157,6 @@ export const useLikePost = () => {
     mutationFn: async (postId: string) => {
       if (!user) throw new Error('User must be logged in');
       
-      console.log('Toggling like for post:', postId);
-      
       // Check if user already liked the post
       const { data: existingLike } = await supabase
         .from('reactions')
@@ -174,8 +165,6 @@ export const useLikePost = () => {
         .eq('user_id', user.id)
         .eq('reaction_type', 'like')
         .single();
-
-      console.log('Existing like found:', existingLike);
 
       if (existingLike) {
         // Unlike the post
@@ -189,16 +178,6 @@ export const useLikePost = () => {
           throw error;
         }
         
-        console.log('Post unliked, checking updated count...');
-        
-        // Fetch updated post to verify count
-        const { data: updatedPost } = await supabase
-          .from('posts')
-          .select('likes_count')
-          .eq('id', postId)
-          .single();
-        
-        console.log('Updated post likes count after unlike:', updatedPost?.likes_count);
         return { action: 'unliked' };
       } else {
         // Like the post
@@ -215,21 +194,10 @@ export const useLikePost = () => {
           throw error;
         }
         
-        console.log('Post liked, checking updated count...');
-        
-        // Fetch updated post to verify count
-        const { data: updatedPost } = await supabase
-          .from('posts')
-          .select('likes_count')
-          .eq('id', postId)
-          .single();
-        
-        console.log('Updated post likes count after like:', updatedPost?.likes_count);
         return { action: 'liked' };
       }
     },
     onSuccess: () => {
-      console.log('Like mutation successful, invalidating queries...');
       // Invalidate all posts queries to refresh counts for all users
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
@@ -245,8 +213,6 @@ export const useSavePost = () => {
   return useMutation({
     mutationFn: async (postId: string) => {
       if (!user) throw new Error('User must be logged in');
-      
-      console.log('Toggling save for post:', postId);
       
       // Check if post is already saved
       const { data: existingSave } = await supabase
@@ -268,7 +234,6 @@ export const useSavePost = () => {
           throw error;
         }
         
-        console.log('Post unsaved');
         return { action: 'unsaved' };
       } else {
         // Save the post
@@ -284,7 +249,6 @@ export const useSavePost = () => {
           throw error;
         }
         
-        console.log('Post saved');
         return { action: 'saved' };
       }
     },
