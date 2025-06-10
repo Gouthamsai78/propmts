@@ -9,10 +9,16 @@ export const usePosts = () => {
   return useQuery({
     queryKey: ['posts'],
     queryFn: async () => {
-      // First fetch all posts
+      // First fetch all posts with their stats
       const { data: posts, error: postsError } = await supabase
         .from('posts')
-        .select('*')
+        .select(`
+          *,
+          post_stats (
+            likes_count,
+            comments_count
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (postsError) {
@@ -82,6 +88,8 @@ export const usePosts = () => {
       // Combine posts with user data and interaction states
       const postsWithData = posts.map(post => {
         const userData = usersMap.get(post.user_id);
+        const postStats = post.post_stats?.[0] || { likes_count: 0, comments_count: 0 };
+        
         return {
           ...post,
           users: userData || {
@@ -90,6 +98,8 @@ export const usePosts = () => {
             avatar_url: null,
             display_name: 'Anonymous'
           },
+          likes_count: postStats.likes_count,
+          comments_count: postStats.comments_count,
           isLikedByUser: likesMap.has(post.id),
           isSavedByUser: savedMap.has(post.id)
         };

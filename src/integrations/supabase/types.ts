@@ -156,6 +156,41 @@ export type Database = {
           },
         ]
       }
+      post_stats: {
+        Row: {
+          comments_count: number
+          created_at: string
+          id: string
+          likes_count: number
+          post_id: string
+          updated_at: string
+        }
+        Insert: {
+          comments_count?: number
+          created_at?: string
+          id?: string
+          likes_count?: number
+          post_id: string
+          updated_at?: string
+        }
+        Update: {
+          comments_count?: number
+          created_at?: string
+          id?: string
+          likes_count?: number
+          post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_stats_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           allow_copy: boolean | null
