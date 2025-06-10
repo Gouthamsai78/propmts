@@ -40,21 +40,21 @@ export const MediaCarousel = ({ mediaUrls, onRemove, editable = false }: MediaCa
   };
 
   return (
-    <div className="relative w-full h-64 rounded-lg overflow-hidden bg-gray-100">
+    <div className="relative w-full">
       {/* Main media display */}
-      <div className="relative w-full h-full">
+      <div className="relative w-full h-auto bg-gray-50 rounded-lg overflow-hidden">
         {isVideo(mediaUrls[currentIndex]) ? (
           <video
             src={mediaUrls[currentIndex]}
             controls
-            className="w-full h-full object-cover"
+            className="w-full h-auto max-h-[500px] object-contain"
             onError={() => console.error('Video failed to load')}
           />
         ) : (
           <img
             src={mediaUrls[currentIndex]}
             alt={`Media ${currentIndex + 1}`}
-            className="w-full h-full object-cover"
+            className="w-full h-auto max-h-[500px] object-contain"
             onError={() => console.error('Image failed to load')}
           />
         )}
@@ -63,7 +63,7 @@ export const MediaCarousel = ({ mediaUrls, onRemove, editable = false }: MediaCa
         {editable && onRemove && (
           <button
             onClick={(e) => handleRemove(currentIndex, e)}
-            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors z-10"
+            className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors z-10 shadow-lg"
           >
             <X className="w-4 h-4" />
           </button>
@@ -74,37 +74,39 @@ export const MediaCarousel = ({ mediaUrls, onRemove, editable = false }: MediaCa
           <>
             <button
               onClick={goToPrevious}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-white/90 backdrop-blur-sm text-gray-800 p-3 rounded-full hover:bg-white transition-all shadow-lg border border-gray-200"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={goToNext}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white/90 backdrop-blur-sm text-gray-800 p-3 rounded-full hover:bg-white transition-all shadow-lg border border-gray-200"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           </>
         )}
 
         {/* Media counter */}
         {mediaUrls.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-full text-sm">
+          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-800 px-3 py-1 rounded-full text-sm font-medium shadow-lg border border-gray-200">
             {currentIndex + 1} / {mediaUrls.length}
           </div>
         )}
       </div>
 
-      {/* Thumbnail strip */}
+      {/* Thumbnail strip - without black background */}
       {mediaUrls.length > 1 && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 p-2">
-          <div className="flex space-x-2 overflow-x-auto">
+        <div className="mt-3 px-2">
+          <div className="flex space-x-2 overflow-x-auto pb-2">
             {mediaUrls.map((url, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`flex-shrink-0 w-12 h-12 rounded overflow-hidden ${
-                  index === currentIndex ? 'ring-2 ring-white' : ''
+                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                  index === currentIndex 
+                    ? 'border-blue-500 shadow-md' 
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 {isVideo(url) ? (
