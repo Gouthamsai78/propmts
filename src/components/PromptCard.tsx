@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal, UserPlus, Eye } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,9 +52,9 @@ export const PromptCard = ({
   const recordViewMutation = useRecordPostView();
   const viewRecorded = useRef(false);
 
-  // Record view when component mounts
+  // Record view when component mounts (only once per post)
   useEffect(() => {
-    if (!viewRecorded.current) {
+    if (!viewRecorded.current && post.id) {
       const timer = setTimeout(() => {
         recordViewMutation.mutate(post.id);
         viewRecorded.current = true;

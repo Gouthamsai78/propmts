@@ -11,19 +11,25 @@ export const useRecordPostView = () => {
     mutationFn: async (postId: string) => {
       console.log('Recording view for post:', postId, 'User:', user?.id);
       
-      // Record the view using the database function
-      const { data, error } = await supabase.rpc('record_post_view', {
-        p_post_id: postId,
-        p_user_id: user?.id || null
-      });
-      
-      if (error) {
-        console.error('Error recording post view:', error);
-        throw error;
+      try {
+        // Record the view using the database function
+        const { data, error } = await supabase.rpc('record_post_view', {
+          p_post_id: postId,
+          p_user_id: user?.id || null
+        });
+        
+        if (error) {
+          console.error('Error recording post view:', error);
+          throw error;
+        }
+        
+        console.log('View recorded successfully:', data);
+        return data;
+      } catch (error) {
+        console.error('Failed to record view:', error);
+        // Don't throw the error to prevent UI disruption
+        return null;
       }
-      
-      console.log('View recorded successfully:', data);
-      return data;
     },
     onSuccess: (_, postId) => {
       console.log('View recorded, updating post stats for:', postId);
@@ -50,6 +56,10 @@ export const useRecordPostView = () => {
         queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
         queryClient.invalidateQueries({ queryKey: ['searchPosts'] });
       }, 1000);
+    },
+    onError: (error) => {
+      console.error('Error in view recording mutation:', error);
+      // Silently handle the error to avoid disrupting the user experience
     },
   });
 };
