@@ -67,6 +67,8 @@ export const useCreateComment = () => {
     mutationFn: async ({ postId, content }: { postId: string; content: string }) => {
       if (!user) throw new Error('User must be logged in');
       
+      console.log('Creating comment for post:', postId);
+      
       const { data, error } = await supabase
         .from('comments')
         .insert({
@@ -82,12 +84,35 @@ export const useCreateComment = () => {
         throw error;
       }
       
+      console.log('Comment created successfully:', data);
       return data;
     },
     onSuccess: (_, variables) => {
+      console.log('Comment created, updating counts for post:', variables.postId);
+      
+      // Optimistic update for comments count
+      queryClient.setQueryData(['posts'], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return oldData.map((post: any) => {
+          if (post.id === variables.postId) {
+            return {
+              ...post,
+              comments_count: (post.comments_count || 0) + 1
+            };
+          }
+          return post;
+        });
+      });
+
+      // Invalidate comments query immediately
       queryClient.invalidateQueries({ queryKey: ['comments', variables.postId] });
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      
+      // Invalidate posts queries after a short delay to get updated counts
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      }, 500);
     },
   });
 };

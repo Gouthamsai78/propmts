@@ -9,6 +9,8 @@ export const useRecordPostView = () => {
 
   return useMutation({
     mutationFn: async (postId: string) => {
+      console.log('Recording view for post:', postId, 'User:', user?.id);
+      
       // Record the view using the database function
       const { data, error } = await supabase.rpc('record_post_view', {
         p_post_id: postId,
@@ -20,13 +22,34 @@ export const useRecordPostView = () => {
         throw error;
       }
       
+      console.log('View recorded successfully:', data);
       return data;
     },
-    onSuccess: () => {
-      // Invalidate posts queries to refresh view counts
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+    onSuccess: (_, postId) => {
+      console.log('View recorded, updating post stats for:', postId);
+      
+      // Optimistic update for views count
+      queryClient.setQueryData(['posts'], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return oldData.map((post: any) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              views_count: (post.views_count || 0) + 1
+            };
+          }
+          return post;
+        });
+      });
+
+      // Invalidate queries to refresh view counts from server
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+        queryClient.invalidateQueries({ queryKey: ['searchPosts'] });
+      }, 1000);
     },
   });
 };

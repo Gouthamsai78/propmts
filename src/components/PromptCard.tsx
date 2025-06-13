@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal, UserPlus, Eye } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
@@ -48,22 +48,31 @@ export const PromptCard = ({
   const [isSaved, setIsSaved] = useState(post.isSavedByUser || false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [hasViewBeenRecorded, setHasViewBeenRecorded] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const recordViewMutation = useRecordPostView();
+  const viewRecorded = useRef(false);
 
-  // Record view when component mounts and user scrolls to see the post
+  // Record view when component mounts
   useEffect(() => {
-    if (!hasViewBeenRecorded) {
+    if (!viewRecorded.current) {
       const timer = setTimeout(() => {
         recordViewMutation.mutate(post.id);
-        setHasViewBeenRecorded(true);
+        viewRecorded.current = true;
       }, 1000); // Record view after 1 second of being visible
 
       return () => clearTimeout(timer);
     }
-  }, [post.id, hasViewBeenRecorded, recordViewMutation]);
+  }, [post.id, recordViewMutation]);
+
+  // Update local state when props change
+  useEffect(() => {
+    setIsLiked(post.isLikedByUser || false);
+  }, [post.isLikedByUser]);
+
+  useEffect(() => {
+    setIsSaved(post.isSavedByUser || false);
+  }, [post.isSavedByUser]);
 
   const handleLike = () => {
     if (!user) {

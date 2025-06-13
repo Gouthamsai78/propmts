@@ -109,9 +109,9 @@ export const usePosts = () => {
 
       return postsWithData;
     },
-    refetchInterval: 3000, // Reduced to 3 seconds for more frequent updates
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-    refetchOnMount: true, // Always refetch when component mounts
+    refetchInterval: 30000, // Reduced to 30 seconds to prevent aggressive polling
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 };
 
@@ -209,11 +209,30 @@ export const useLikePost = () => {
         return { action: 'liked' };
       }
     },
-    onSuccess: () => {
-      // Invalidate all posts queries to refresh counts for all users
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+    onSuccess: (_, postId) => {
+      // Optimistic update for better UX
+      queryClient.setQueryData(['posts'], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return oldData.map((post: any) => {
+          if (post.id === postId) {
+            const isCurrentlyLiked = post.isLikedByUser;
+            return {
+              ...post,
+              likes_count: isCurrentlyLiked ? post.likes_count - 1 : post.likes_count + 1,
+              isLikedByUser: !isCurrentlyLiked
+            };
+          }
+          return post;
+        });
+      });
+
+      // Invalidate queries to get fresh data from server
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+      }, 500);
     },
   });
 };
@@ -264,10 +283,28 @@ export const useSavePost = () => {
         return { action: 'saved' };
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
-      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+    onSuccess: (_, postId) => {
+      // Optimistic update for better UX
+      queryClient.setQueryData(['posts'], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return oldData.map((post: any) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              isSavedByUser: !post.isSavedByUser
+            };
+          }
+          return post;
+        });
+      });
+
+      // Invalidate queries to get fresh data from server
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['posts'] });
+        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      }, 500);
     },
   });
 };
