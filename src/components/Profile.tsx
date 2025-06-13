@@ -196,6 +196,7 @@ export const Profile = ({ userId, onUserClick }: ProfileProps) => {
                 authorId: post.user_id,
                 likes_count: post.likes_count || 0,
                 comments_count: post.comments_count || 0,
+                views_count: (post as any).views_count || 0,
                 image_url: post.image_url,
                 media_urls: post.image_url ? [post.image_url] : [],
                 allow_copy: post.allow_copy ?? true,

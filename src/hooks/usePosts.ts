@@ -16,7 +16,8 @@ export const usePosts = () => {
           *,
           post_stats (
             likes_count,
-            comments_count
+            comments_count,
+            views_count
           )
         `)
         .order('created_at', { ascending: false });
@@ -88,7 +89,7 @@ export const usePosts = () => {
       // Combine posts with user data and interaction states
       const postsWithData = posts.map(post => {
         const userData = usersMap.get(post.user_id);
-        const postStats = post.post_stats?.[0] || { likes_count: 0, comments_count: 0 };
+        const postStats = post.post_stats?.[0] || { likes_count: 0, comments_count: 0, views_count: 0 };
         
         return {
           ...post,
@@ -100,6 +101,7 @@ export const usePosts = () => {
           },
           likes_count: postStats.likes_count,
           comments_count: postStats.comments_count,
+          views_count: postStats.views_count,
           isLikedByUser: likesMap.has(post.id),
           isSavedByUser: savedMap.has(post.id)
         };

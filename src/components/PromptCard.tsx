@@ -1,8 +1,9 @@
 
-import { useState } from "react";
-import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal, UserPlus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Heart, MessageCircle, Bookmark, Copy, MoreHorizontal, UserPlus, Eye } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
+import { useRecordPostView } from "@/hooks/usePostViews";
 import { Comments } from "./Comments";
 import { MediaCarousel } from "./MediaCarousel";
 
@@ -17,6 +18,7 @@ interface Post {
   authorId?: string;
   likes_count: number;
   comments_count: number;
+  views_count?: number;
   image_url?: string;
   media_urls?: string[];
   allow_copy: boolean;
@@ -46,8 +48,22 @@ export const PromptCard = ({
   const [isSaved, setIsSaved] = useState(post.isSavedByUser || false);
   const [showFullPrompt, setShowFullPrompt] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [hasViewBeenRecorded, setHasViewBeenRecorded] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const recordViewMutation = useRecordPostView();
+
+  // Record view when component mounts and user scrolls to see the post
+  useEffect(() => {
+    if (!hasViewBeenRecorded) {
+      const timer = setTimeout(() => {
+        recordViewMutation.mutate(post.id);
+        setHasViewBeenRecorded(true);
+      }, 1000); // Record view after 1 second of being visible
+
+      return () => clearTimeout(timer);
+    }
+  }, [post.id, hasViewBeenRecorded, recordViewMutation]);
 
   const handleLike = () => {
     if (!user) {
@@ -212,6 +228,10 @@ export const PromptCard = ({
                 <MessageCircle className="w-5 h-5 text-gray-600" />
                 <span className="text-sm font-medium text-gray-700">{post.comments_count || 0}</span>
               </button>
+              <div className="flex items-center space-x-2 px-2 py-1">
+                <Eye className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">{post.views_count || 0}</span>
+              </div>
             </div>
             <button
               onClick={handleSave}

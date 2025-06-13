@@ -164,6 +164,7 @@ export type Database = {
           likes_count: number
           post_id: string
           updated_at: string
+          views_count: number
         }
         Insert: {
           comments_count?: number
@@ -172,6 +173,7 @@ export type Database = {
           likes_count?: number
           post_id: string
           updated_at?: string
+          views_count?: number
         }
         Update: {
           comments_count?: number
@@ -180,12 +182,48 @@ export type Database = {
           likes_count?: number
           post_id?: string
           updated_at?: string
+          views_count?: number
         }
         Relationships: [
           {
             foreignKeyName: "post_stats_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_views: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          post_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          post_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          post_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_views_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
@@ -362,7 +400,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_post_view: {
+        Args: {
+          p_post_id: string
+          p_user_id?: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
