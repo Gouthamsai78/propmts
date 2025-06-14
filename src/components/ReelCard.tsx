@@ -18,7 +18,6 @@ interface Post {
   comments_count: number;
   views_count?: number;
   image_url?: string;
-  media_urls?: string[];
   allow_copy: boolean;
   isLikedByUser?: boolean;
   isSavedByUser?: boolean;
@@ -32,7 +31,7 @@ export const ReelCard = ({ post }: ReelCardProps) => {
   const [isLiked, setIsLiked] = useState(post.isLikedByUser || false);
   const [isSaved, setIsSaved] = useState(post.isSavedByUser || false);
   const [showComments, setShowComments] = useState(false);
-  
+
   const { user } = useAuth();
   const { toast } = useToast();
   const likeMutation = useLikePost();
@@ -63,7 +62,7 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     setIsSaved(!isSaved);
     saveMutation.mutate(post.id);
   };
-  
+
   const handleCopyPrompt = () => {
     if (!post.prompt) return;
     navigator.clipboard.writeText(post.prompt);
@@ -81,44 +80,47 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     setShowComments(true);
   };
 
-  const mediaUrl = post.media_urls?.[0] || post.image_url;
-  const isVideo = mediaUrl?.match(/\.(mp4|webm)$/i);
-  
+  // Only using image_url for now, as posts do not support media_urls array in DB schema
+  const mediaUrl = post.image_url;
+  const isVideo = mediaUrl?.match(/\.(mp4|webm|mov|avi)$/i);
+
   return (
     <>
       <div className="w-full h-full relative text-white">
         {/* Media Background */}
         {mediaUrl ? (
           isVideo ? (
-              <video
-                  src={mediaUrl}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-              />
+            <video
+              src={mediaUrl}
+              className="w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls={false}
+              preload="auto"
+            />
           ) : (
-              <img src={mediaUrl} alt={post.title} className="w-full h-full object-cover" />
+            <img src={mediaUrl} alt={post.title} className="w-full h-full object-cover" />
           )
         ) : (
           <div className="w-full h-full bg-gray-900 flex items-center justify-center">
             <p>No media available</p>
           </div>
         )}
-        
+
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/40"></div>
-        
+
         {/* Top Right Controls */}
         <div className="absolute top-6 right-4">
             {post.prompt && post.allow_copy && (
-                <button
-                    onClick={handleCopyPrompt}
-                    className="p-3 bg-black/40 backdrop-blur-sm rounded-full hover:bg-black/60 transition-colors"
-                >
-                    <Copy className="w-5 h-5" />
-                </button>
+              <button
+                  onClick={handleCopyPrompt}
+                  className="p-3 bg-black/40 backdrop-blur-sm rounded-full hover:bg-black/60 transition-colors"
+              >
+                  <Copy className="w-5 h-5" />
+              </button>
             )}
         </div>
 
@@ -138,13 +140,13 @@ export const ReelCard = ({ post }: ReelCardProps) => {
             </button>
             <button onClick={handleSave} className="flex flex-col items-center space-y-1 text-center">
                 <div className="p-3 bg-black/40 backdrop-blur-sm rounded-full">
-                     <Bookmark className={`w-6 h-6 transition-all ${isSaved ? 'fill-white text-white' : ''}`} />
+                    <Bookmark className={`w-6 h-6 transition-all ${isSaved ? 'fill-white text-white' : ''}`} />
                 </div>
                 <span className="text-xs font-semibold">Save</span>
             </button>
             <div className="flex flex-col items-center space-y-1 text-center">
                 <div className="p-3 bg-black/40 backdrop-blur-sm rounded-full">
-                     <Eye className="w-6 h-6" />
+                    <Eye className="w-6 h-6" />
                 </div>
                 <span className="text-xs font-semibold">{post.views_count?.toLocaleString() || 0}</span>
             </div>
@@ -159,13 +161,13 @@ export const ReelCard = ({ post }: ReelCardProps) => {
             <h3 className="font-semibold text-lg">{post.title}</h3>
             <p className="text-sm text-gray-200 line-clamp-2">{post.content}</p>
             {post.prompt && (
-                 <div className="bg-white/10 backdrop-blur-md p-3 rounded-lg mt-2">
-                     <p className="text-sm font-mono line-clamp-2">{post.prompt}</p>
-                 </div>
+                <div className="bg-white/10 backdrop-blur-md p-3 rounded-lg mt-2">
+                    <p className="text-sm font-mono line-clamp-2">{post.prompt}</p>
+                </div>
             )}
         </div>
       </div>
-      <Comments 
+      <Comments
         postId={post.id}
         isOpen={showComments}
         onClose={() => setShowComments(false)}
