@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -228,11 +227,9 @@ export const useLikePost = () => {
       });
 
       // Invalidate queries to get fresh data from server
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['posts'] });
-        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
-      }, 500);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
     },
   });
 };
@@ -300,11 +297,9 @@ export const useSavePost = () => {
       });
 
       // Invalidate queries to get fresh data from server
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['posts'] });
-        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
-        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      }, 500);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 };

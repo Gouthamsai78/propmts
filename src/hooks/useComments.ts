@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -108,11 +107,9 @@ export const useCreateComment = () => {
       // Invalidate comments query immediately
       queryClient.invalidateQueries({ queryKey: ['comments', variables.postId] });
       
-      // Invalidate posts queries after a short delay to get updated counts
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['posts'] });
-        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      }, 500);
+      // Invalidate posts queries to get updated counts
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 };

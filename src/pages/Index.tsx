@@ -1,15 +1,14 @@
-
 import { useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { Feed } from "@/components/Feed";
-import { Communities } from "@/components/Communities";
+import { Reels } from "@/components/Reels";
 import { Explore } from "@/components/Explore";
 import { CreatePost } from "@/components/CreatePost";
 import { Profile } from "@/components/Profile";
 import { Search } from "@/components/Search";
 import { Header } from "@/components/Header";
 
-type ActiveTab = 'home' | 'communities' | 'search' | 'explore' | 'create' | 'profile';
+type ActiveTab = 'home' | 'reels' | 'search' | 'explore' | 'create' | 'profile';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -37,9 +36,9 @@ const Index = () => {
       case 'home':
         console.log('Rendering Feed component');
         return <Feed onUserClick={handleUserClick} />;
-      case 'communities':
-        console.log('Rendering Communities component');
-        return <Communities />;
+      case 'reels':
+        console.log('Rendering Reels component');
+        return <Reels />;
       case 'search':
         console.log('Rendering Search component');
         return <Search onUserClick={handleUserClick} />;

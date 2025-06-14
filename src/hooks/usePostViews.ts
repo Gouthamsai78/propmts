@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,12 +49,10 @@ export const useRecordPostView = () => {
       });
 
       // Invalidate queries to refresh view counts from server
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['posts'] });
-        queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-        queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
-        queryClient.invalidateQueries({ queryKey: ['searchPosts'] });
-      }, 1000);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['savedPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['searchPosts'] });
     },
     onError: (error) => {
       console.error('Error in view recording mutation:', error);
