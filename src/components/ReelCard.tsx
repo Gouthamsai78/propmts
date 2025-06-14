@@ -81,8 +81,30 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     setShowComments(true);
   };
 
-  // Only using image_url for now, as posts do not support media_urls array in DB schema
-  const mediaUrl = post.image_url;
+  // ----- MEDIA URL EXTRACT FIX -----
+  // image_url might be:
+  // - a direct string (https://...)
+  // - a JSON stringified array: '["https://..."]'
+  let mediaUrl: string | undefined = undefined;
+  if (!post.image_url) {
+    mediaUrl = undefined;
+  } else {
+    try {
+      // Check if it's a JSON stringified array
+      if (post.image_url.startsWith("[")) {
+        const arr = JSON.parse(post.image_url);
+        if (Array.isArray(arr) && arr[0]) {
+          mediaUrl = arr[0];
+        }
+      } else {
+        mediaUrl = post.image_url;
+      }
+    } catch (e) {
+      // Fallback: use as is (could not parse)
+      mediaUrl = post.image_url;
+    }
+  }
+
   const isVideo = mediaUrl?.match(/\.(mp4|webm|mov|avi)$/i);
 
   // Handler for video errors
@@ -112,7 +134,7 @@ export const ReelCard = ({ post }: ReelCardProps) => {
               />
               {/* Video debug info */}
               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20">
-                <div>DEBUG: Video src: <span className="break-all">{mediaUrl}</span></div>
+                <div>DEBUG: Video src: <span className="break-all">{JSON.stringify(mediaUrl)}</span></div>
                 <div>Ext: {mediaUrl.split('.').pop()}</div>
                 {mediaError && <div className="text-red-400">{mediaError}</div>}
               </div>
@@ -122,7 +144,7 @@ export const ReelCard = ({ post }: ReelCardProps) => {
               <img src={mediaUrl} alt={post.title} className="w-full h-full object-cover" />
               {/* Image debug info */}
               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20">
-                <div>DEBUG: Image src: <span className="break-all">{mediaUrl}</span></div>
+                <div>DEBUG: Image src: <span className="break-all">{JSON.stringify(mediaUrl)}</span></div>
                 <div>Ext: {mediaUrl.split('.').pop()}</div>
               </div>
             </>
