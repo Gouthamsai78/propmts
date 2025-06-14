@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Heart, MessageCircle, Bookmark, Copy, Eye, Maximize2 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import { useLikePost, useSavePost } from "@/hooks/usePosts";
 import { Comments } from "./Comments";
+import { AspectRatio } from "./ui/aspect-ratio";
 
 interface Post {
   id: string;
@@ -25,14 +25,17 @@ interface Post {
 
 interface ReelCardProps {
   post: Post;
+  active?: boolean; // receives whether this reel is the visible one
 }
 
-export const ReelCard = ({ post }: ReelCardProps) => {
+// This file is getting large! Please consider splitting out media/player and content panels into separate files.
+
+export const ReelCard = ({ post, active = false }: ReelCardProps) => {
   const [isLiked, setIsLiked] = useState(post.isLikedByUser || false);
   const [isSaved, setIsSaved] = useState(post.isSavedByUser || false);
   const [showComments, setShowComments] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  // Manage Read More state for both content and prompt
+  // Read More state for both content and prompt
   const [showAllContent, setShowAllContent] = useState(false);
   const [showAllPrompt, setShowAllPrompt] = useState(false);
 
@@ -47,10 +50,23 @@ export const ReelCard = ({ post }: ReelCardProps) => {
   useEffect(() => {
     setIsLiked(post.isLikedByUser || false);
   }, [post.isLikedByUser]);
-
   useEffect(() => {
     setIsSaved(post.isSavedByUser || false);
   }, [post.isSavedByUser]);
+
+  // Main fix: Only play/unmute when 'active', otherwise pause/mute
+  useEffect(() => {
+    if (videoRef.current) {
+      if (active) {
+        videoRef.current.play().catch(() => {});
+        videoRef.current.muted = false;
+      } else {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+        videoRef.current.muted = true;
+      }
+    }
+  }, [active]);
 
   const handleLike = () => {
     if (!user) {
@@ -60,7 +76,6 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     setIsLiked(!isLiked);
     likeMutation.mutate(post.id);
   };
-
   const handleSave = () => {
     if (!user) {
       toast({ title: "Login required", description: "Please log in to save posts.", variant: "destructive" });
@@ -69,7 +84,6 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     setIsSaved(!isSaved);
     saveMutation.mutate(post.id);
   };
-
   const handleCopyPrompt = () => {
     if (!post.prompt) return;
     navigator.clipboard.writeText(post.prompt);
@@ -78,7 +92,6 @@ export const ReelCard = ({ post }: ReelCardProps) => {
       description: "The prompt has been copied to your clipboard.",
     });
   };
-
   const handleComments = () => {
     if (!user) {
       toast({ title: "Login required", description: "Please log in to view comments.", variant: "destructive" });
@@ -88,9 +101,7 @@ export const ReelCard = ({ post }: ReelCardProps) => {
   };
 
   // ----- MEDIA URL EXTRACT FIX -----
-  // image_url might be:
-  // - a direct string (https://...)
-  // - a JSON stringified array: '["https://..."]'
+  // image_url might be direct string or JSON array as a string
   let mediaUrl: string | undefined = undefined;
   if (!post.image_url) {
     mediaUrl = undefined;
@@ -108,14 +119,12 @@ export const ReelCard = ({ post }: ReelCardProps) => {
       mediaUrl = post.image_url;
     }
   }
-
   const isVideo = mediaUrl?.match(/\.(mp4|webm|mov|avi)$/i);
 
   // Handler for video errors
   const handleVideoError = () => {
     setMediaError("Failed to play video. The file may not be a valid video, or it may not be accessible.");
   };
-
   // Handle fullscreen
   const handleFullscreen = () => {
     if (videoRef.current) {
@@ -129,11 +138,9 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     }
   };
 
-  // Display max 2 lines by default, then show full (className changes)
+  // Clamp and show "Read more" if it's long
   const clampContent = !showAllContent ? "line-clamp-2" : "";
   const clampPrompt = !showAllPrompt ? "line-clamp-2" : "";
-
-  // Helper to know if content is long enough to show "Read more"
   const SHOW_CONTENT_READ_MORE = post.content && post.content.length > 100;
   const SHOW_PROMPT_READ_MORE = post.prompt && post.prompt.length > 80;
 
@@ -141,74 +148,68 @@ export const ReelCard = ({ post }: ReelCardProps) => {
     <>
       <div className="w-full h-full relative text-white">
         {/* Media Background */}
-        {mediaUrl ? (
-          isVideo ? (
-            <>
-              <div className="relative w-full h-full">
-                <video
-                  key={mediaUrl}
-                  ref={videoRef}
-                  src={mediaUrl}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  loop
-                  muted={false}
-                  controls
-                  playsInline
-                  preload="auto"
-                  onError={handleVideoError}
-                  style={{ background: "black" }}
-                />
-                {/* Fullscreen button (top right of video) */}
-                <button
-                  className="absolute top-2 right-2 p-2 bg-black/60 rounded-full z-20 hover:bg-black/80 transition"
-                  onClick={handleFullscreen}
-                  aria-label="Fullscreen"
-                  type="button"
-                >
-                  <Maximize2 className="w-5 h-5" />
-                </button>
-                {/* Video debug info */}
-                <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20">
-                  <div>DEBUG: Video src: <span className="break-all">{JSON.stringify(mediaUrl)}</span></div>
-                  <div>Ext: {mediaUrl.split('.').pop()}</div>
-                  {mediaError && <div className="text-red-400">{mediaError}</div>}
+        <AspectRatio ratio={9 / 16} className="w-full h-full bg-black">
+          {mediaUrl ? (
+            isVideo ? (
+              <>
+                <div className="relative w-full h-full bg-black">
+                  <video
+                    key={mediaUrl}
+                    ref={videoRef}
+                    src={mediaUrl}
+                    className="w-full h-full object-contain"
+                    autoPlay={active}
+                    loop
+                    controls
+                    muted={!active}
+                    preload="auto"
+                    onError={handleVideoError}
+                    style={{ background: "black" }}
+                  />
+                  {/* Fullscreen button */}
+                  <button
+                    className="absolute top-2 right-2 p-2 bg-black/60 rounded-full z-20 hover:bg-black/80 transition"
+                    onClick={handleFullscreen}
+                    aria-label="Fullscreen"
+                    type="button"
+                  >
+                    <Maximize2 className="w-5 h-5" />
+                  </button>
+                  {/* Error/debug info */}
+                  {mediaError && (
+                    <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20 text-red-400">
+                      {mediaError}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </>
+              </>
+            ) : (
+              <img src={mediaUrl} alt={post.title} className="w-full h-full object-contain bg-black" />
+            )
           ) : (
-            <>
-              <img src={mediaUrl} alt={post.title} className="w-full h-full object-cover" />
-              {/* Image debug info */}
-              <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20">
-                <div>DEBUG: Image src: <span className="break-all">{JSON.stringify(mediaUrl)}</span></div>
-                <div>Ext: {mediaUrl.split('.').pop()}</div>
-              </div>
-            </>
-          )
-        ) : (
-          <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-            <p>No media available</p>
-          </div>
-        )}
+            <div className="w-full h-full flex items-center justify-center bg-gray-900">
+              <p>No media available</p>
+            </div>
+          )}
+        </AspectRatio>
 
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/40 pointer-events-none"></div>
 
         {/* Top Right Controls */}
-        <div className="absolute top-6 right-4">
-            {post.prompt && post.allow_copy && (
-              <button
-                  onClick={handleCopyPrompt}
-                  className="p-3 bg-black/40 backdrop-blur-sm rounded-full hover:bg-black/60 transition-colors"
-              >
-                  <Copy className="w-5 h-5" />
-              </button>
-            )}
+        <div className="absolute top-6 right-4 z-30">
+          {post.prompt && post.allow_copy && (
+            <button
+              onClick={handleCopyPrompt}
+              className="p-3 bg-black/40 backdrop-blur-sm rounded-full hover:bg-black/60 transition-colors"
+            >
+              <Copy className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Side Action Bar */}
-        <div className="absolute bottom-28 right-2 flex flex-col items-center space-y-5">
+        <div className="absolute bottom-28 right-2 flex flex-col items-center space-y-5 z-30">
             <button onClick={handleLike} className="flex flex-col items-center space-y-1 text-center">
                 <div className="p-3 bg-black/40 backdrop-blur-sm rounded-full">
                     <Heart className={`w-6 h-6 transition-all ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
@@ -236,62 +237,60 @@ export const ReelCard = ({ post }: ReelCardProps) => {
         </div>
 
         {/* Bottom Content */}
-        <div className="absolute bottom-28 left-4 right-20 space-y-2">
-            <div className="flex items-center space-x-2">
-                <img src={post.authorAvatar} alt={post.author} className="w-10 h-10 rounded-full border-2 border-white" />
-                <p className="font-bold">{post.author}</p>
+        <div className="absolute bottom-24 left-4 right-20 space-y-2 z-30">
+          <div className="flex items-center space-x-2">
+            <img src={post.authorAvatar} alt={post.author} className="w-10 h-10 rounded-full border-2 border-white" />
+            <p className="font-bold">{post.author}</p>
+          </div>
+          <h3 className="font-semibold text-lg">{post.title}</h3>
+          {post.content && (
+            <p className={`text-sm text-gray-200 ${clampContent}`}>
+              {showAllContent ? post.content : post.content.slice(0, 150)}
+              {!showAllContent && SHOW_CONTENT_READ_MORE && (
+                <>...{" "}
+                <button
+                  onClick={() => setShowAllContent(true)}
+                  className="underline text-blue-200 font-medium ml-1 text-xs"
+                >
+                  Read more
+                </button>
+                </>
+              )}
+              {showAllContent && SHOW_CONTENT_READ_MORE && (
+                <button
+                  onClick={() => setShowAllContent(false)}
+                  className="underline text-blue-200 font-medium ml-2 text-xs"
+                >
+                  Read less
+                </button>
+              )}
+            </p>
+          )}
+          {post.prompt && (
+            <div className="bg-white/10 backdrop-blur-md p-3 rounded-lg mt-2">
+              <span className={`text-sm font-mono text-white ${clampPrompt}`}>
+                {showAllPrompt ? post.prompt : post.prompt.slice(0, 120)}
+                {!showAllPrompt && SHOW_PROMPT_READ_MORE && (
+                  <>...{" "}
+                  <button
+                    onClick={() => setShowAllPrompt(true)}
+                    className="underline text-blue-200 font-medium ml-1 text-xs"
+                  >
+                    Read more
+                  </button>
+                  </>
+                )}
+                {showAllPrompt && SHOW_PROMPT_READ_MORE && (
+                  <button
+                    onClick={() => setShowAllPrompt(false)}
+                    className="underline text-blue-200 font-medium ml-2 text-xs"
+                  >
+                    Read less
+                  </button>
+                )}
+              </span>
             </div>
-            <h3 className="font-semibold text-lg">{post.title}</h3>
-            {post.content && (
-                <p className={`text-sm text-gray-200 ${clampContent}`}>
-                  {showAllContent ? post.content : post.content.slice(0, 150)}
-                  {!showAllContent && SHOW_CONTENT_READ_MORE && (
-                    <>
-                      ...{" "}
-                      <button 
-                        onClick={() => setShowAllContent(true)} 
-                        className="underline text-blue-200 font-medium ml-1 text-xs"
-                      >
-                        Read more
-                      </button>
-                    </>
-                  )}
-                  {showAllContent && SHOW_CONTENT_READ_MORE && (
-                    <button 
-                      onClick={() => setShowAllContent(false)} 
-                      className="underline text-blue-200 font-medium ml-2 text-xs"
-                    >
-                      Read less
-                    </button>
-                  )}
-                </p>
-            )}
-            {post.prompt && (
-                <div className="bg-white/10 backdrop-blur-md p-3 rounded-lg mt-2">
-                  <span className={`text-sm font-mono text-white ${clampPrompt}`}>
-                    {showAllPrompt ? post.prompt : post.prompt.slice(0, 120)}
-                    {!showAllPrompt && SHOW_PROMPT_READ_MORE && (
-                      <>
-                        ...{" "}
-                        <button 
-                          onClick={() => setShowAllPrompt(true)} 
-                          className="underline text-blue-200 font-medium ml-1 text-xs"
-                        >
-                          Read more
-                        </button>
-                      </>
-                    )}
-                    {showAllPrompt && SHOW_PROMPT_READ_MORE && (
-                      <button 
-                        onClick={() => setShowAllPrompt(false)} 
-                        className="underline text-blue-200 font-medium ml-2 text-xs"
-                      >
-                        Read less
-                      </button>
-                    )}
-                  </span>
-                </div>
-            )}
+          )}
         </div>
       </div>
       <Comments
