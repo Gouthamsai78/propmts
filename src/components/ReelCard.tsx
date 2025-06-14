@@ -31,6 +31,7 @@ export const ReelCard = ({ post }: ReelCardProps) => {
   const [isLiked, setIsLiked] = useState(post.isLikedByUser || false);
   const [isSaved, setIsSaved] = useState(post.isSavedByUser || false);
   const [showComments, setShowComments] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -84,24 +85,47 @@ export const ReelCard = ({ post }: ReelCardProps) => {
   const mediaUrl = post.image_url;
   const isVideo = mediaUrl?.match(/\.(mp4|webm|mov|avi)$/i);
 
+  // Handler for video errors
+  const handleVideoError = () => {
+    setMediaError("Failed to play video. The file may not be a valid video, or it may not be accessible.");
+  };
+
   return (
     <>
       <div className="w-full h-full relative text-white">
         {/* Media Background */}
         {mediaUrl ? (
           isVideo ? (
-            <video
-              src={mediaUrl}
-              className="w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-              controls={false}
-              preload="auto"
-            />
+            <>
+              <video
+                key={mediaUrl}
+                src={mediaUrl}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                preload="auto"
+                onError={handleVideoError}
+                style={{ background: "black" }}
+              />
+              {/* Video debug info */}
+              <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20">
+                <div>DEBUG: Video src: <span className="break-all">{mediaUrl}</span></div>
+                <div>Ext: {mediaUrl.split('.').pop()}</div>
+                {mediaError && <div className="text-red-400">{mediaError}</div>}
+              </div>
+            </>
           ) : (
-            <img src={mediaUrl} alt={post.title} className="w-full h-full object-cover" />
+            <>
+              <img src={mediaUrl} alt={post.title} className="w-full h-full object-cover" />
+              {/* Image debug info */}
+              <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs z-20">
+                <div>DEBUG: Image src: <span className="break-all">{mediaUrl}</span></div>
+                <div>Ext: {mediaUrl.split('.').pop()}</div>
+              </div>
+            </>
           )
         ) : (
           <div className="w-full h-full bg-gray-900 flex items-center justify-center">
