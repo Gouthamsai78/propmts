@@ -87,8 +87,9 @@ export const usePosts = () => {
 
       // Combine posts with user data and interaction states
       const postsWithData = posts.map(post => {
+        const anyPost = post as any;
         const userData = usersMap.get(post.user_id);
-        const postStats = post.post_stats?.[0] || { likes_count: 0, comments_count: 0, views_count: 0 };
+        const postStats = anyPost.post_stats?.[0] || { likes_count: 0, comments_count: 0, views_count: 0 };
         
         return {
           ...post,
@@ -98,11 +99,15 @@ export const usePosts = () => {
             avatar_url: null,
             display_name: 'Anonymous'
           },
+          author: userData?.display_name || userData?.username || 'Anonymous',
+          authorAvatar: userData?.avatar_url || '/placeholder.svg',
+          authorId: post.user_id,
           likes_count: postStats.likes_count,
           comments_count: postStats.comments_count,
           views_count: postStats.views_count,
           isLikedByUser: likesMap.has(post.id),
-          isSavedByUser: savedMap.has(post.id)
+          isSavedByUser: savedMap.has(post.id),
+          media_urls: anyPost.media_urls,
         };
       });
 
